@@ -3,7 +3,7 @@
 import base64
 
 from email.message import EmailMessage
-from .gmail_client import get_gmail_service
+from .gmail_api import get_gmail_service
 
 
 # Gmail Service

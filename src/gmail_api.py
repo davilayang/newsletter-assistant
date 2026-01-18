@@ -1,4 +1,4 @@
-# src/gmail_client.py
+# src/gmail_api.py
 #
 
 from pathlib import Path
@@ -23,7 +23,7 @@ TOKEN_FILE = Path("creds/token.json")
 def get_gmail_service():
     creds: Credentials | None = None
 
-    # Load saved tokens
+    # Load saved user tokens
     if TOKEN_FILE.exists():
         creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
 
