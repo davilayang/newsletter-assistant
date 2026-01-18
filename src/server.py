@@ -1,10 +1,8 @@
 # src/server.py
 # Run MCP server with available tools
 
-
 from mcp.server.fastmcp import FastMCP
-
-from src.ops_gmail import list_recent_messages, send_email
+from src.gmail_ops import list_recent_messages, send_email
 
 mcp = FastMCP("gmail-mcp")
 

@@ -1,10 +1,9 @@
 # src/ops_gmail.py
 
-
 import base64
-from email.message import EmailMessage
 
-from gmail_client import get_gmail_service
+from email.message import EmailMessage
+from src.gmail_client import get_gmail_service
 
 
 def list_recent_messages(max_results: int = 5):
