@@ -6,6 +6,14 @@ from email.message import EmailMessage
 from .gmail_client import get_gmail_service
 
 
+# Gmail Service
+
+
+
+
+
+# Gmail Operations
+
 def list_recent_messages(max_results: int = 5):
     """list_recent_messaages
 
