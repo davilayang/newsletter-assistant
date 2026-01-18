@@ -4,4 +4,63 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.25.0",
+]
+
+[dependency-groups]
+dev = [
+    "black==23.7.0",
+    "ipython>=8.0.0,<9.0.0",
+    "mypy>=1.1.1,<2.0.0",
+    "poethepoet>=0.29.0,<1.0.0",
+    "pydantic>=2.4.2,<3.0.0",
+    "pydantic-settings>=2.0.3,<3.0.0",
+    "ruff>=0.4.6,<1.0.0",
+]
+
+### Poe the Poet (Scripting) ###
+
+[tool.poe.tasks.fmt]
+cmd = "black --check dags plugins tests"
+help = "Check code formatting with black (does not modify)"
+
+[tool.poe.tasks.fmt-fix]
+cmd = "black dags plugins tests"
+help = "Fix code formating issues automatically with black"
+
+[tool.poe.tasks.lint]
+cmd = "ruff check ."
+help = "Check code linting with ruff (does not modify)"
+
+[tool.poe.tasks.lint-fix]
+cmd = "ruff check --fix ."
+help = "Fix code linting issues automatically with ruff"
+
+[tool.poe.tasks.fix]
+sequence = ["fmt-fix", "lint-fix"]
+help = "Fix all issues: formatting with black and linting with ruff"
+
+[tool.poe.tasks.mypy]
+cmd = "mypy dags plugins"
+help = "Run type checking with mypy"
+
+[tool.poe.tasks.check]
+sequence = ["fmt", "lint", "mypy", "test"]
+help = "Run all checks: formatting, linting, type checking, and tests"
+
+### Formating, Typing and Tests ###
+
+[tool.mypy]
+python_version = "3.13"
+
+[tool.ruff]
+target-version = "py311"
+lint.select = ["E", "F", "I"]
+lint.ignore = ["E501", "E402"]
+lint.unfixable = []
+line-length = 89
+
+[tool.ruff.lint.isort]
+lines-between-types = 1

@@ -1,0 +1,8 @@
+# MCP Project
+
+
+## Initial Phase
+
+
+
+## ...
