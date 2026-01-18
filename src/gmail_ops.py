@@ -3,10 +3,14 @@
 import base64
 
 from email.message import EmailMessage
-from src.gmail_client import get_gmail_service
+from .gmail_client import get_gmail_service
 
 
 def list_recent_messages(max_results: int = 5):
+    """list_recent_messaages
+
+
+    """
     service = get_gmail_service()
     result = service.users().messages().list(
         userId="me",
@@ -16,6 +20,9 @@ def list_recent_messages(max_results: int = 5):
 
 
 def send_email(to_addr: str, subject: str, body: str):
+    """send_email
+
+    """
     service = get_gmail_service()
 
     message = EmailMessage()
