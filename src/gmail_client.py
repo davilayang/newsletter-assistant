@@ -16,8 +16,8 @@ SCOPES: Sequence[str] = [
     "https://www.googleapis.com/auth/gmail.send",
 ]
 
-CREDENTIALS_FILE = Path("credentials.json")
-TOKEN_FILE = Path("token.json")
+CREDENTIALS_FILE = Path("creds/credentials.json")
+TOKEN_FILE = Path("creds/token.json")
 
 
 def get_gmail_service():
