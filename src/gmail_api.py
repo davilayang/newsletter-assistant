@@ -1,6 +1,8 @@
 # src/gmail_api.py
 # Set up connection to Gmail API
 
+import logging
+
 from pathlib import Path
 from typing import Sequence
 
@@ -8,6 +10,9 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+
+logger = logging.getLogger(__name__)
+
 
 # Minimum scopes for Gmail read + send
 # https://developers.google.com/workspace/gmail/api/auth/scopes
@@ -27,7 +32,11 @@ def get_gmail_service():
     if TOKEN_FILE.exists():
         creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
 
-        # TODO: Log if token is expired
+        if creds.expired:
+            logger.info(
+                "Gmail OAuth token expired (refresh_token=%s)",
+                bool(creds.refresh_token),
+            )
 
     # If missing or expired, run OAuth flow
     if not creds or not creds.valid:
