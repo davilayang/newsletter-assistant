@@ -157,7 +157,7 @@ def create_draft_message(message_id: str, reply_body: str):
             body={
                 "message": {
                     "raw": raw,
-                    "threadId": message["threadId"],
+                    "threadId": message["thread_id"],
                 }
             },
         )
@@ -166,7 +166,9 @@ def create_draft_message(message_id: str, reply_body: str):
 
     return {
         "draft_id": draft.get("id"),
-        "thread_id": message["threadId"]
+        "thread_id": message["thread_id"],
+        "subject": em["Subject"],
+        "body": em.get_content()
     }
 
 
