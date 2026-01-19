@@ -33,11 +33,11 @@ cmd = "pytest -v"
 help = "Run tests with verbose output (defaults to 'tests/' if no path given)"
 
 [tool.poe.tasks.fmt]
-cmd = "black --check dags plugins tests"
+cmd = "black --check src tests"
 help = "Check code formatting with black (does not modify)"
 
 [tool.poe.tasks.fmt-fix]
-cmd = "black dags plugins tests"
+cmd = "black src tests"
 help = "Fix code formating issues automatically with black"
 
 [tool.poe.tasks.lint]
@@ -53,7 +53,7 @@ sequence = ["fmt-fix", "lint-fix"]
 help = "Fix all issues: formatting with black and linting with ruff"
 
 [tool.poe.tasks.mypy]
-cmd = "mypy dags plugins"
+cmd = "mypy src"
 help = "Run type checking with mypy"
 
 [tool.poe.tasks.check]

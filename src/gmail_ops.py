@@ -10,8 +10,8 @@ from email.parser import BytesParser
 
 # Helper functions
 
-def _parse_headers(email_message) -> dict[str, str]:
 
+def _parse_headers(email_message) -> dict[str, str]:
     def _h(name: str) -> str:
         v = email_message.get(name)
         return str(v) if v is not None else ""
@@ -73,25 +73,33 @@ def _extract_best_body_text(email_message) -> str | None:
         # Optional: if you want nicer HTML->text, install bs4 and replace this with BeautifulSoup.
         # For now: crude tag-strip fallback.
         import re
-        text = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE)
+
+        text = re.sub(
+            r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE
+        )
         text = re.sub(r"<[^>]+>", " ", text)
         text = re.sub(r"\s+", " ", text).strip()
         return text if text else None
 
     return None
 
+
 # Gmail Operations
 
-def list_messages(max_results: int = 5, query: str | None = None) -> list[dict[str, str]]:
+
+def list_messages(
+    max_results: int = 5, query: str | None = None
+) -> list[dict[str, str]]:
     """list_messages
     List most recent messages in the inbox, optionally filtering by query
     """
     service = get_gmail_service()
-    result = service.users().messages().list(
-        userId="me",
-        q=query,
-        maxResults=max_results
-    ).execute()
+    result = (
+        service.users()
+        .messages()
+        .list(userId="me", q=query, maxResults=max_results)
+        .execute()
+    )
 
     return result.get("messages", [])
 
@@ -115,7 +123,7 @@ def get_message_content(message_id: str) -> dict[str, str]:
     body = _extract_best_body_text(email_message)
 
     output = {
-        "id": content.get("id"), # Email Id
+        "id": content.get("id"),  # Email Id
         "thread_id": content.get("threadId"),
         "from": headers["from"],
         "subject": headers["subject"],
@@ -136,7 +144,9 @@ def create_draft_message(message_id: str, reply_body: str):
     # Get the message
     message = get_message_content(message_id)
 
-    if any([pattern in message["from"] for pattern in ("no-reply", "no_reply", "noreply")]):
+    if any(
+        [pattern in message["from"] for pattern in ("no-reply", "no_reply", "noreply")]
+    ):
         raise ValueError(
             f"Cannot create draft for no-reply addresses. Got: `{message['from']}`"
         )
@@ -144,7 +154,7 @@ def create_draft_message(message_id: str, reply_body: str):
     # Build the reply
     em = EmailMessage()
     em["To"] = message["from"]
-    em["Subject"] = "RE: "+ message["subject"]
+    em["Subject"] = "RE: " + message["subject"]
     em.set_content(reply_body.strip())
 
     raw = base64.urlsafe_b64encode(em.as_bytes()).decode("utf-8")
@@ -168,9 +178,8 @@ def create_draft_message(message_id: str, reply_body: str):
         "draft_id": draft.get("id"),
         "thread_id": message["thread_id"],
         "subject": em["Subject"],
-        "body": em.get_content()
+        "body": em.get_content(),
     }
-
 
 
 def send_draft(draft_id: str):
@@ -180,12 +189,7 @@ def send_draft(draft_id: str):
 
     service = get_gmail_service()
 
-    sent = (
-        service.users()
-        .drafts()
-        .send(userId="me", body={"id": draft_id})
-        .execute()
-    )
+    sent = service.users().drafts().send(userId="me", body={"id": draft_id}).execute()
 
     return {
         "message_id": sent.get("id"),

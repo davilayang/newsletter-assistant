@@ -5,10 +5,14 @@ import json
 
 from mcp.server.fastmcp import FastMCP
 from .gmail_ops import (
-    list_messages, get_message_content, create_draft_message, send_draft
+    list_messages,
+    get_message_content,
+    create_draft_message,
+    send_draft,
 )
 
 mcp = FastMCP("gmail-mcp")
+
 
 @mcp.tool()
 def get_unread_emails(max_results: int = 3) -> str:
@@ -20,13 +24,12 @@ def get_unread_emails(max_results: int = 3) -> str:
 
     messages: list[dict] = []
 
-    unread_query = "is:unread" # Filter for only unread messages
+    unread_query = "is:unread"  # Filter for only unread messages
 
     for m in list_messages(max_results, query=unread_query):
         msg_id = m["id"]
         msg = get_message_content(msg_id)
         messages.append(msg)
-
 
     return json.dumps(messages)
 
@@ -42,6 +45,7 @@ def create_draft_reply(reply_to_message_id: str, reply_body: str) -> dict[str, s
 
     draft = create_draft_message(reply_to_message_id, reply_body)
     return draft
+
 
 @mcp.tool()
 def send_draft_message(draft_id: str):
