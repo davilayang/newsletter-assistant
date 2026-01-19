@@ -98,7 +98,7 @@ def list_messages(max_results: int = 5, query: str | None = None) -> list[dict[s
 
 def get_message_content(message_id: str) -> dict[str, str]:
     """get_mnessage_content
-    Get a Email's message metadata and content body
+    Get a Email's metadata and content body
     """
     service = get_gmail_service()
     content = (
@@ -116,7 +116,7 @@ def get_message_content(message_id: str) -> dict[str, str]:
 
     output = {
         "id": content.get("id"), # Email Id
-        "threadId": content.get("threadId"),
+        "thread_id": content.get("threadId"),
         "from": headers["from"],
         "subject": headers["subject"],
         "snippet": content.get("snippet"),
@@ -128,7 +128,7 @@ def get_message_content(message_id: str) -> dict[str, str]:
 
 def create_draft_message(message_id: str, reply_body: str):
     """create_draft_message
-    Create a reply draft email
+    Create a draft email that replies to the message ID with given body
     """
 
     service = get_gmail_service()
@@ -164,13 +164,16 @@ def create_draft_message(message_id: str, reply_body: str):
         .execute()
     )
 
-    return {"draft_id": draft.get("id")}
+    return {
+        "draft_id": draft.get("id"),
+        "thread_id": message["threadId"]
+    }
 
 
 
 def send_draft(draft_id: str):
     """send_draft
-    Send the draft message
+    Send the draft email
     """
 
     service = get_gmail_service()
@@ -185,5 +188,4 @@ def send_draft(draft_id: str):
     return {
         "message_id": sent.get("id"),
         "thread_id": sent.get("threadId"),
-        "label_ids": sent.get("labelIds"),
     }
