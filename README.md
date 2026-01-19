@@ -1,12 +1,16 @@
 # MCP Project
 
-
 ## Usage
 
 Pre-requisites:
 
-1. Python package manager [`uv` is installed](https://docs.astral.sh/uv/)
-2. Get absolute path to this project, e.g. using `pwd`
+1. Google Cloud Platform OAuth 2.0 Credential
+   - On Google Cloud Platform
+   - Find "Gmail API" => Click "Credentials" 
+   - On "OAuth 2.0 Client IDs" section => Click "Create credentials"
+   - Download the credentials and store as `./creds/credentials.json`
+2. Python package manager [`uv` is installed](https://docs.astral.sh/uv/)
+3. Get absolute path to this project, e.g. using `pwd`
 
 ### With Claude Code CLI
 
