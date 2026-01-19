@@ -1,4 +1,5 @@
 .zed/
+.ruff_cache/
 creds/*
 
 # Python-generated files
