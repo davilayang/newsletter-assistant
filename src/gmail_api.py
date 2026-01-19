@@ -1,5 +1,5 @@
 # src/gmail_api.py
-#
+# Set up connection to Gmail API
 
 from pathlib import Path
 from typing import Sequence

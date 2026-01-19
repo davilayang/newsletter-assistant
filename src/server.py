@@ -8,16 +8,15 @@ from .gmail_ops import list_messages, get_message_content, send_message
 
 mcp = FastMCP("gmail-mcp")
 
-
 @mcp.tool()
-def get_unread_emails(max_results: int = 3) -> int:
-    """Get unread emails from Gmail API
+def get_unread_emails(max_results: int = 3) -> str:
+    """Get unread emails' metadata and content body from Gmail API
 
     Args:
         max_results: Number of unread emails to retrieve, default to 3
     """
 
-    messages = []
+    messages: list[str] = []
 
     unread_query = "is:unread"
 
@@ -30,7 +29,7 @@ def get_unread_emails(max_results: int = 3) -> int:
     return json.dumps(messages)
 
 
-@mcp.tools()
+@mcp.tool()
 def create_draft_reply(thread_id: str, reply_body: str):
     """Create a draft reply email to the Email thread with the given reply body
 

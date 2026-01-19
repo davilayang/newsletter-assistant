@@ -17,7 +17,7 @@ def _parse_headers(email_message) -> dict[str, str]:
     }
 
 
-def _extract_best_body_text(email_message) -> Optional[str]:
+def _extract_best_body_text(email_message) -> str | None:
     """
     Prefer text/plain (non-attachment). If not present, use text/html converted to text.
     """
@@ -81,7 +81,7 @@ def _extract_best_body_text(email_message) -> Optional[str]:
 
 # Gmail Operations
 
-def list_messages(max_results: int = 5, query: str = None):
+def list_messages(max_results: int = 5, query: str | None = None):
     """list_messages
 
 
@@ -97,40 +97,37 @@ def list_messages(max_results: int = 5, query: str = None):
 
 
 
-def get_message_content(message_id: str):
+def get_message_content(message_id: str) -> dict[str, str]:
     """Get Gmail message content and body"""
 
-    output: List[Dict[str, Any]] = []
-
-
     service = get_gmail_service()
-    message = (
+    content = (
         service.users()
         .messages()
         .get(userId="me", id=message_id, format="raw")
         .execute()
     )
 
-    headers = _parse_headers(email_message)
-    body = _extract_best_body_text(email_message)
+    headers = _parse_headers(content)
+    body = _extract_best_body_text(content)
 
-    out.append(
-        {
-            "id": msg.get("id"),
-            "threadId": msg.get("threadId"),
+    output = {
+            "id": content.get("id"),
+            "threadId": content.get("threadId"),
             "from": headers["from"],
             "subject": headers["subject"],
-            "snippet": msg.get("snippet"),  # still useful even if you include body
+            "snippet": content.get("snippet"),  # still useful even if you include body
             "body": body,
         }
-    )
 
     return output
 
+
 def send_message(to_addr: str, subject: str, body: str):
-    """send_email
+    """send_message
 
     """
+
     service = get_gmail_service()
 
     message = EmailMessage()
