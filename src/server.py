@@ -10,7 +10,7 @@ mcp = FastMCP("gmail-mcp")
 
 @mcp.tool()
 def get_unread_emails(max_results: int = 3) -> str:
-    """Get unread emails' metadata and content body from Gmail API
+    """Get most recent unread emails' metadata and content body from Gmail API
 
     Args:
         max_results: Number of unread emails to retrieve, default to 3
@@ -18,7 +18,7 @@ def get_unread_emails(max_results: int = 3) -> str:
 
     messages: list[dict] = []
 
-    unread_query = "is:unread"
+    unread_query = "is:unread" # Filter for only unread messages
 
     for m in list_messages(max_results, query=unread_query):
         msg_id = m["id"]
@@ -31,7 +31,7 @@ def get_unread_emails(max_results: int = 3) -> str:
 
 @mcp.tool()
 def create_draft_reply(thread_id: str, reply_body: str) -> str:
-    """Create a draft reply email to the Email thread with the given reply body
+    """Create a draft reply to an Email on Gmail API
 
     Args:
         thread_id: String as the Email thread_id

@@ -80,16 +80,11 @@ def _extract_best_body_text(email_message) -> str | None:
 
     return None
 
-
-
-
-
 # Gmail Operations
 
 def list_messages(max_results: int = 5, query: str | None = None):
     """list_messages
-
-
+    List most recent messages in the inbox, optionally filtering by query
     """
     service = get_gmail_service()
     result = service.users().messages().list(
@@ -101,10 +96,10 @@ def list_messages(max_results: int = 5, query: str | None = None):
     return result.get("messages", [])
 
 
-
 def get_message_content(message_id: str) -> dict[str, str]:
-    """Get Gmail message content and body"""
-
+    """get_mnessage_content
+    Get a Email's message metadata and content body
+    """
     service = get_gmail_service()
     content = (
         service.users()
@@ -120,36 +115,74 @@ def get_message_content(message_id: str) -> dict[str, str]:
     body = _extract_best_body_text(email_message)
 
     output = {
-            "id": content.get("id"),
-            "threadId": content.get("threadId"),
-            "from": headers["from"],
-            "subject": headers["subject"],
-            "snippet": content.get("snippet"),  # still useful even if you include body
-            "body": body,
-        }
+        "id": content.get("id"), # Email Id
+        "threadId": content.get("threadId"),
+        "from": headers["from"],
+        "subject": headers["subject"],
+        "snippet": content.get("snippet"),
+        "body": body,
+    }
 
     return output
 
 
-def send_message(to_addr: str, subject: str, body: str):
-    """send_message
-
+def create_draft_message(message_id: str, reply_body: str):
+    """create_draft_message
+    Create a reply draft email
     """
 
     service = get_gmail_service()
 
-    message = EmailMessage()
-    message["To"] = to_addr
-    message["From"] = "me"
-    message["Subject"] = subject
-    message.set_content(body)
+    # Get the message
+    message = get_message_content(message_id)
 
-    raw = base64.urlsafe_b64encode(message.as_bytes()).decode()
-    sent = (
+    # TODO: Use regex match
+    if message["from"].startswith("no-reply"):
+        raise ValueError("Cannot create draft for no-reply addresses")
+
+    # Build the reply
+    em = EmailMessage()
+    em["To"] = message["from"]
+    em["Subject"] = "RE: "+ message["subject"]
+    em.set_content(reply_body.strip())
+
+    raw = base64.urlsafe_b64encode(em.as_bytes()).decode("utf-8")
+
+    draft = (
         service.users()
-        .messages()
-        .send(userId="me", body={"raw": raw})
+        .drafts()
+        .create(
+            userId="me",
+            body={
+                "message": {
+                    "raw": raw,
+                    "threadId": message["threadId"],
+                }
+            },
+        )
         .execute()
     )
 
-    return sent
+    return {"draft_id": draft.get("id")}
+
+
+
+def send_draft(draft_id: str):
+    """send_draft
+    Send the draft message
+    """
+
+    service = get_gmail_service()
+
+    sent = (
+        service.users()
+        .drafts()
+        .send(userId="me", body={"id": draft_id})
+        .execute()
+    )
+
+    return {
+        "message_id": sent.get("id"),
+        "thread_id": sent.get("threadId"),
+        "label_ids": sent.get("labelIds"),
+    }
