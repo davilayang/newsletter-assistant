@@ -16,7 +16,7 @@ def get_unread_emails(max_results: int = 3) -> str:
         max_results: Number of unread emails to retrieve, default to 3
     """
 
-    messages: list[str] = []
+    messages: list[dict] = []
 
     unread_query = "is:unread"
 
@@ -30,7 +30,7 @@ def get_unread_emails(max_results: int = 3) -> str:
 
 
 @mcp.tool()
-def create_draft_reply(thread_id: str, reply_body: str):
+def create_draft_reply(thread_id: str, reply_body: str) -> str:
     """Create a draft reply email to the Email thread with the given reply body
 
     Args:
@@ -38,6 +38,17 @@ def create_draft_reply(thread_id: str, reply_body: str):
         reply_body: Email reply body
     """
 
+
+    pass
+
+
+@mcp.tool()
+def send_draft_message(draft_id: str):
+    """Send the draft email
+
+    Args:
+        draft_id: String, Unique identifier to a Email draft
+    """
 
     pass
 
