@@ -11,9 +11,11 @@ from email.parser import BytesParser
 # Helper functions
 
 def _parse_headers(email_message) -> dict[str, str]:
+
     def _h(name: str) -> str:
         v = email_message.get(name)
         return str(v) if v is not None else ""
+
     return {
         "from": _h("From"),
         "subject": _h("Subject"),
