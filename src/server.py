@@ -40,8 +40,8 @@ def create_draft_reply(reply_to_message_id: str, reply_body: str) -> dict[str, s
     """Create a draft reply to an Email on Gmail API
 
     Args:
-        thread_id: String as the Email thread_id
-        reply_body: Email reply body
+        reply_to_message_id: String, unique Id for Email to be replied to
+        reply_body: String, Body of reply Email
     """
 
     draft = create_draft_message(reply_to_message_id, reply_body)
@@ -50,10 +50,10 @@ def create_draft_reply(reply_to_message_id: str, reply_body: str) -> dict[str, s
 
 @mcp.tool()
 def send_draft_message(draft_id: str):
-    """Send the given draft email
+    """Send the draft email
 
     Args:
-        draft_id: String, Unique identifier to a Email draft
+        draft_id: String, Unique Id to a draft Email
     """
 
     send_status = send_draft(draft_id)

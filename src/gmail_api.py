@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 # Minimum scopes for Gmail read + send
 # https://developers.google.com/workspace/gmail/api/auth/scopes
 SCOPES: Sequence[str] = [
-    "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.compose",
 ]
 
 CREDENTIALS_FILE = Path("creds/credentials.json")
@@ -47,11 +47,11 @@ def get_gmail_service():
                 str(CREDENTIALS_FILE),
                 SCOPES,
             )
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_local_server(port=0)  # type: ignore
 
         # Save for later
         with TOKEN_FILE.open("w") as f:
-            f.write(creds.to_json())
+            f.write(creds.to_json())  # type: ignore
 
     # Create Gmail API service
     return build("gmail", "v1", credentials=creds)

@@ -1,6 +1,6 @@
 # src/gmail_ops.py
 # Define functions to execute Gmail operations
-#
+
 import base64
 
 from email import policy
