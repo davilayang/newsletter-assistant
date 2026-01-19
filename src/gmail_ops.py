@@ -82,7 +82,7 @@ def _extract_best_body_text(email_message) -> str | None:
 
 # Gmail Operations
 
-def list_messages(max_results: int = 5, query: str | None = None):
+def list_messages(max_results: int = 5, query: str | None = None) -> list[dict[str, str]]:
     """list_messages
     List most recent messages in the inbox, optionally filtering by query
     """
@@ -136,9 +136,10 @@ def create_draft_message(message_id: str, reply_body: str):
     # Get the message
     message = get_message_content(message_id)
 
-    # TODO: Use regex match
-    if message["from"].startswith("no-reply"):
-        raise ValueError("Cannot create draft for no-reply addresses")
+    if any([pattern in message["from"] for pattern in ("no-reply", "no_reply", "noreply")]):
+        raise ValueError(
+            f"Cannot create draft for no-reply addresses. Got: `{message['from']}`"
+        )
 
     # Build the reply
     em = EmailMessage()

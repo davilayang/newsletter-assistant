@@ -4,7 +4,9 @@
 import json
 
 from mcp.server.fastmcp import FastMCP
-from .gmail_ops import list_messages, get_message_content, send_message
+from .gmail_ops import (
+    list_messages, get_message_content, create_draft_message, send_draft
+)
 
 mcp = FastMCP("gmail-mcp")
 
@@ -30,7 +32,7 @@ def get_unread_emails(max_results: int = 3) -> str:
 
 
 @mcp.tool()
-def create_draft_reply(thread_id: str, reply_body: str) -> str:
+def create_draft_reply(reply_to_message_id: str, reply_body: str) -> dict[str, str]:
     """Create a draft reply to an Email on Gmail API
 
     Args:
@@ -38,19 +40,19 @@ def create_draft_reply(thread_id: str, reply_body: str) -> str:
         reply_body: Email reply body
     """
 
-
-    pass
-
+    draft = create_draft_message(reply_to_message_id, reply_body)
+    return draft
 
 @mcp.tool()
 def send_draft_message(draft_id: str):
-    """Send the draft email
+    """Send the given draft email
 
     Args:
         draft_id: String, Unique identifier to a Email draft
     """
 
-    pass
+    send_status = send_draft(draft_id)
+    return send_status
 
 
 if __name__ == "__main__":
