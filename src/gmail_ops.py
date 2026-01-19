@@ -1,12 +1,13 @@
-# src/ops_gmail.py
-
+# src/gmail_ops.py
+# Define functions to execute Gmail operations
+#
 import base64
 
-from email.message import EmailMessage
-from .gmail_api import get_gmail_service
-
 from email import policy
+from email.message import EmailMessage
 from email.parser import BytesParser
+
+from .gmail_api import get_gmail_service
 
 # Helper functions
 

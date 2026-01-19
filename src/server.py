@@ -4,10 +4,11 @@
 import json
 
 from mcp.server.fastmcp import FastMCP
+
 from .gmail_ops import (
-    list_messages,
-    get_message_content,
     create_draft_message,
+    get_message_content,
+    list_messages,
     send_draft,
 )
 
