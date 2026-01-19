@@ -27,6 +27,8 @@ def get_gmail_service():
     if TOKEN_FILE.exists():
         creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
 
+        # TODO: Log if token is expired
+
     # If missing or expired, run OAuth flow
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:

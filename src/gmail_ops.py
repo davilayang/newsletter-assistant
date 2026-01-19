@@ -5,6 +5,9 @@ import base64
 from email.message import EmailMessage
 from .gmail_api import get_gmail_service
 
+from email import policy
+from email.parser import BytesParser
+
 # Helper functions
 
 def _parse_headers(email_message) -> dict[str, str]:
@@ -108,8 +111,11 @@ def get_message_content(message_id: str) -> dict[str, str]:
         .execute()
     )
 
-    headers = _parse_headers(content)
-    body = _extract_best_body_text(content)
+    raw_bytes = base64.urlsafe_b64decode(content["raw"])
+    email_message = BytesParser(policy=policy.default).parsebytes(raw_bytes)
+
+    headers = _parse_headers(email_message)
+    body = _extract_best_body_text(email_message)
 
     output = {
             "id": content.get("id"),
