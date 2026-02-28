@@ -1,0 +1,83 @@
+# mcp-project
+
+A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium newsletter every morning by voice — ask questions, get summaries, take notes.
+
+## Prerequisites
+
+1. **Python 3.13** and [`uv`](https://docs.astral.sh/uv/)
+2. **GCP OAuth 2.0 credentials** for Gmail API
+   - Google Cloud Console → Gmail API → Credentials → OAuth 2.0 Client IDs → Download JSON
+   - Save as `creds/credentials.json`
+3. **API keys** — create a `.env` file at the project root:
+
+```env
+ANTHROPIC_API_KEY=...
+LIVEKIT_URL=...
+LIVEKIT_API_KEY=...
+LIVEKIT_API_SECRET=...
+DEEPGRAM_API_KEY=...
+ELEVENLABS_API_KEY=...
+```
+
+## Setup
+
+```bash
+uv sync
+```
+
+On first run the Gmail OAuth consent flow will open in your browser and save a token to `creds/token.json`.
+
+## Usage
+
+### Voice agent (Phase 1)
+
+Start the agent and connect via a LiveKit room:
+
+```bash
+uv run python -m src.agent.agent dev
+```
+
+Then speak to it — example session:
+
+> "Load my newsletter."
+> "Summarise the third article."
+> "Take a note: this is relevant to my RAG project."
+
+Notes are saved to `NOTES/<today's date>_medium-notes.md`.
+
+### Gmail MCP server
+
+Register with Claude Code CLI by adding to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "mcp-gmail": {
+      "command": "uv",
+      "args": ["--directory", "/absolute/path/to/mcp-project", "run", "-m", "src.mcp.gmail.server"]
+    }
+  }
+}
+```
+
+Exposes three tools to Claude: `get_unread_emails`, `create_draft_reply`, `send_draft_message`.
+
+## Development
+
+```bash
+uv run poe check       # fmt + lint + typecheck + tests
+uv run poe fix         # auto-fix formatting and linting
+uv run pytest tests/path/to/test_file.py -v  # single test file
+```
+
+## Project structure
+
+```
+src/
+  core/          # Shared: Gmail client, config, notes writer
+  mcp/gmail/     # MCP server for Claude Code / Desktop
+  agent/         # LiveKit voice agent (Phase 1)
+  knowledge/     # Scraping pipeline + vector store (Phase 2)
+dags/            # Airflow DAGs (Phase 2)
+NOTES/           # Your saved session notes
+```
