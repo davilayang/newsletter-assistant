@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Gmail MCP (Model Context Protocol) server that exposes Gmail operations as tools for use with Claude Code CLI or Claude Desktop. It uses OAuth 2.0 to authenticate with the Gmail API and exposes three tools: read unread emails, create draft replies, and send drafts.
+A personal knowledge assistant built in two phases:
+- **Phase 1** — LiveKit voice agent that reads Gmail Medium newsletter emails each morning, summarises articles, answers questions, and takes notes
+- **Phase 2** — Daily scraping pipeline accumulates content into SQLite → ChromaDB (vector search) → Neo4j (knowledge graph)
 
 ## Package Manager
 
@@ -17,61 +19,91 @@ uv run <command>     # Run a command in the project virtualenv
 
 ## Common Commands (via `poe`)
 
-All tasks are defined in `pyproject.toml` under `[tool.poe.tasks]`:
-
 ```bash
 uv run poe check      # Run all checks: fmt, lint, mypy, tests
 uv run poe test       # Run tests (pytest -v)
-uv run poe fmt        # Check formatting with black (read-only)
 uv run poe fmt-fix    # Auto-fix formatting with black
-uv run poe lint       # Check linting with ruff (read-only)
 uv run poe lint-fix   # Auto-fix linting with ruff
-uv run poe mypy       # Type-check with mypy
 uv run poe fix        # Auto-fix formatting + linting
+uv run poe mypy       # Type-check with mypy
 ```
 
 Run a single test file:
 ```bash
-uv run pytest tests/test_foo.py -v
-```
-
-Run the MCP server directly (for development):
-```bash
-uv run -m src.server
+uv run pytest tests/path/to/test_foo.py -v
 ```
 
 ## Architecture
 
 ```
 src/
-  server.py      # FastMCP server — defines the 3 MCP tools exposed to Claude
-  gmail_api.py   # OAuth 2.0 auth flow + builds Gmail API service client
-  gmail_ops.py   # Gmail operations: list_messages, get_message_content,
-                 #   create_draft_message, send_draft
-creds/
-  credentials.json  # GCP OAuth client credentials (must be created manually)
-  token.json        # OAuth token (auto-generated after first auth)
+  core/               # Shared primitives — imported by all components
+    config.py         # pydantic-settings, loads .env
+    gmail/
+      client.py       # OAuth 2.0 auth flow + Gmail service client
+      ops.py          # list_messages, get_message_content, create_draft, send_draft
+    notes.py          # Append-only markdown notes writer → NOTES/<date>_medium-notes.md
+
+  mcp/                # MCP servers — one sub-package per server
+    gmail/
+      server.py       # FastMCP: get_unread_emails, create_draft_reply, send_draft_message
+    vector_store/     # Phase 2
+    graph/            # Phase 2+
+
+  agent/              # LiveKit voice agent (Phase 1)
+    agent.py          # VoicePipelineAgent: Deepgram STT → Claude LLM → ElevenLabs TTS
+    tools.py          # LLM function tools: get_todays_newsletter, save_note
+
+  knowledge/          # Scraping + knowledge pipeline (Phase 2)
+    medium.py         # Newsletter HTML parser + Jina Reader fetch
+    pipeline.py       # run() — cron / Airflow PythonOperator entrypoint
+    raw_store.py      # SQLite: articles table + scrape_log for dedup
+    vector_store.py   # ChromaDB: chunk → embed → upsert, semantic search
+    graph.py          # Neo4j (Phase 2+)
+
+dags/                 # Airflow DAGs — thin wrappers over knowledge/pipeline.py
+
+data/                 # Runtime — gitignored
+  articles.db         # SQLite raw store (source of truth, back this up)
+  chroma/             # ChromaDB vector index (rebuildable from articles.db)
+
+creds/                # GCP OAuth credentials — gitignored
+  credentials.json    # Download from Google Cloud Console
+  token.json          # Auto-generated on first run
 ```
 
-**Data flow:** `server.py` tools → `gmail_ops.py` functions → `gmail_api.get_gmail_service()` → Google API.
+**Dependency rule:** only `core/` is imported by other packages. `mcp/`, `agent/`, `knowledge/` never import from each other.
 
-The OAuth flow in `gmail_api.py` uses two scopes: `gmail.readonly` and `gmail.compose`. On first run (or when `token.json` is missing/expired), it opens a browser for the OAuth consent flow and saves the token.
+**Data pipeline (Phase 2):**
+```
+Gmail → medium.py → raw_store (SQLite) → vector_store (ChromaDB) → graph (Neo4j)
+```
+ChromaDB is fully rebuildable from `articles.db`. Only `articles.db` needs to be backed up.
 
-## Setup Prerequisites
+## Entry Points
 
-1. GCP OAuth 2.0 credentials file at `creds/credentials.json` (download from Google Cloud Console under Gmail API → Credentials → OAuth 2.0 Client IDs)
-2. `uv` installed
+```bash
+uv run python -m src.mcp.gmail.server       # Gmail MCP server
+uv run python -m src.agent.agent            # LiveKit voice agent
+uv run python -m src.knowledge.pipeline     # Run scraper once
+```
 
 ## MCP Server Configuration
 
-To register this server in `.mcp.json` (for Claude Code CLI):
+To register the Gmail MCP server in `.mcp.json` (for Claude Code CLI):
 ```json
 {
   "mcpServers": {
     "mcp-gmail": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/mcp-project", "run", "-m", "src.server"]
+      "args": ["--directory", "/absolute/path/to/mcp-project", "run", "-m", "src.mcp.gmail.server"]
     }
   }
 }
 ```
+
+## Setup Prerequisites
+
+1. GCP OAuth 2.0 credentials at `creds/credentials.json` (Google Cloud Console → Gmail API → Credentials → OAuth 2.0 Client IDs)
+2. `.env` file at project root with keys for LiveKit, Deepgram, ElevenLabs, Anthropic (see `src/core/config.py` for all keys)
+3. `uv` installed
