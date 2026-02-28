@@ -12,11 +12,11 @@ dependencies = [
     "google-api-python-client==2.188.0",
     # Phase 1 — newsletter parsing
     "beautifulsoup4>=4.12",
-    # Phase 1 — agent
-    "livekit-agents>=0.8",
-    "livekit-plugins-deepgram",
-    "livekit-plugins-elevenlabs",
-    "livekit-plugins-anthropic",
+    # Phase 1 — agent (mirrors livekit-project/eva/voice-agent versions)
+    "livekit-agents[silero,turn-detector]~=1.3",
+    "livekit-plugins-deepgram~=1.0",
+    "livekit-plugins-elevenlabs~=1.0",
+    "livekit-plugins-anthropic~=1.0",
     # Phase 2 — knowledge pipeline
     "chromadb>=0.6",
 ]
