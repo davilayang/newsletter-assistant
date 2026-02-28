@@ -4,7 +4,6 @@
 import json
 
 from mcp.server.fastmcp import FastMCP
-
 from src.core.gmail.ops import (
     create_draft_message,
     get_message_content,

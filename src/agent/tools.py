@@ -73,7 +73,8 @@ def _parse_articles(html: str) -> list[dict[str, str]]:
 class NewsletterAssistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions=dedent("""\
+            instructions=dedent(
+                """\
                 You are a personal reading assistant for Medium newsletter articles.
                 Each morning you help the user review what arrived in their newsletter.
 
@@ -86,7 +87,8 @@ class NewsletterAssistant(Agent):
                 - If the user wants to go deeper on any article, discuss it in detail.
 
                 Start by greeting the user and offering to load their latest newsletter.
-            """),
+            """
+            ),
         )
 
     @function_tool()

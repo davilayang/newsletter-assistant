@@ -2,9 +2,7 @@
 # LiveKit voice agent entry point
 
 from livekit import agents
-from livekit.agents import (
-    AgentServer, AgentSession, JobContext, room_io, inference
-)
+from livekit.agents import AgentServer, AgentSession, JobContext, inference, room_io
 from livekit.plugins import silero
 
 from .tools import NewsletterAssistant
@@ -25,7 +23,6 @@ async def session(ctx: JobContext):
             voice="Olivia",
         ),
         vad=silero.VAD.load(),
-
     )
 
     await agent_session.start(
