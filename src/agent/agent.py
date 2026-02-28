@@ -5,9 +5,16 @@ from livekit import agents
 from livekit.agents import AgentServer, AgentSession, JobContext, inference, room_io
 from livekit.plugins import silero
 
+from src.core.gmail.client import get_gmail_service
+
 from .tools import NewsletterAssistant
 
 server = AgentServer()
+
+# Validate Gmail auth at import time so the agent fails fast before any session starts.
+# Pass interactive=False so a missing/expired token raises RuntimeError instead of
+# blocking the process trying to open a browser.
+get_gmail_service(interactive=False)
 
 
 # @server.rtc_session(agent_name="newsletter-assistant")
