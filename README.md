@@ -56,9 +56,14 @@ Notes are saved to `NOTES/<today's date>_medium-notes.md`.
 
 ### Gmail MCP server
 
+Exposes three tools to Claude: `get_unread_emails`, `create_draft_reply`, `send_draft_message`.
+
+#### With Claude Code CLI
+
 Register with Claude Code CLI by adding to `.mcp.json`:
 
 ```json
+// Replace "/absolute/path/to/mcp-project" with the real path
 {
   "mcpServers": {
     "mcp-gmail": {
@@ -69,7 +74,30 @@ Register with Claude Code CLI by adding to `.mcp.json`:
 }
 ```
 
-Exposes three tools to Claude: `get_unread_emails`, `create_draft_reply`, `send_draft_message`.
+Check with `claude mcp list`.
+
+#### With Claude Desktop
+
+> On MacOS, install with `brew install claude`
+
+1. Open Claude Desktop
+2. Click on "Settings" → "Developer"
+3. Under "Local MCP servers", click "Edit Config"
+4. Add the following configuration:
+
+```json
+// Replace "/Users/absolute/path/mcp-project" with the real path
+{
+  "mcpServers": {
+    "mcp-gmail": {
+      "command": "uv",
+      "args": [
+        "--directory", "/Users/absolute/path/mcp-project", "run", "-m", "src.mcp.gmail.server"
+      ]
+    }
+  }
+}
+```
 
 ## Development
 
@@ -90,3 +118,7 @@ src/
 dags/            # Airflow DAGs (Phase 2)
 NOTES/           # Your saved session notes
 ```
+
+## References
+
+- https://modelcontextprotocol.io/docs/develop/connect-local-servers
