@@ -1,6 +1,5 @@
-.zed/
-.ruff_cache/
-creds/*
+creds
+.zed
 
 # Python-generated files
 __pycache__/
@@ -12,3 +11,10 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Runtime data
+data/
+logs/
+
+# Environment variables
+.env

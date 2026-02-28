@@ -1,11 +1,10 @@
-# src/server.py
-# Run MCP server with available tools
+# src/mcp/gmail/server.py
+# Run Gmail MCP server with available tools
 
 import json
 
 from mcp.server.fastmcp import FastMCP
-
-from .gmail_ops import (
+from src.core.gmail.ops import (
     create_draft_message,
     get_message_content,
     list_messages,
@@ -25,7 +24,7 @@ def get_unread_emails(max_results: int = 3) -> str:
 
     messages: list[dict] = []
 
-    unread_query = "is:unread"  # Filter for only unread messages
+    unread_query = "is:unread"
 
     for m in list_messages(max_results, query=unread_query):
         msg_id = m["id"]

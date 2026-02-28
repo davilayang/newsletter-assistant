@@ -9,7 +9,16 @@ dependencies = [
     "mcp[cli]>=1.25.0",
     "google-auth==2.47.0",
     "google-auth-oauthlib==1.2.4",
-    "google-api-python-client==2.188.0"
+    "google-api-python-client==2.188.0",
+    # Phase 1 — newsletter parsing
+    "beautifulsoup4>=4.12",
+    # Phase 1 — agent (mirrors livekit-project/eva/voice-agent versions)
+    "livekit-agents[silero,turn-detector]~=1.3",
+    "livekit-plugins-deepgram~=1.0",
+    "livekit-plugins-elevenlabs~=1.0",
+    "livekit-plugins-anthropic~=1.0",
+    # Phase 2 — knowledge pipeline
+    "chromadb>=0.6",
 ]
 
 [dependency-groups]
@@ -60,7 +69,7 @@ help = "Run type checking with mypy"
 sequence = ["fmt", "lint", "mypy", "test"]
 help = "Run all checks: formatting, linting, type checking, and tests"
 
-### Formating, Typing and Tests ###
+### Formatting, Typing and Tests ###
 
 [tool.mypy]
 python_version = "3.13"

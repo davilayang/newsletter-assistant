@@ -1,4 +1,4 @@
-# src/gmail_ops.py
+# src/core/gmail/ops.py
 # Define functions to execute Gmail operations
 
 import base64
@@ -7,7 +7,7 @@ from email import policy
 from email.message import EmailMessage
 from email.parser import BytesParser
 
-from .gmail_api import get_gmail_service
+from .client import get_gmail_service
 
 # Helper functions
 
@@ -71,8 +71,6 @@ def _extract_best_body_text(email_message) -> str | None:
         return plain.strip()
 
     if html and html.strip():
-        # Optional: if you want nicer HTML->text, install bs4 and replace this with BeautifulSoup.
-        # For now: crude tag-strip fallback.
         import re
 
         text = re.sub(
@@ -85,15 +83,35 @@ def _extract_best_body_text(email_message) -> str | None:
     return None
 
 
+def _extract_html_body(email_message) -> str | None:
+    """Return the raw HTML body of an email, without stripping tags."""
+    if email_message.is_multipart():
+        for part in email_message.walk():
+            if (
+                part.get_content_type() == "text/html"
+                and part.get_content_disposition() != "attachment"
+            ):
+                try:
+                    return part.get_content()
+                except Exception:
+                    payload = part.get_payload(decode=True) or b""
+                    return payload.decode(errors="ignore")
+    elif email_message.get_content_type() == "text/html":
+        try:
+            return email_message.get_content()
+        except Exception:
+            payload = email_message.get_payload(decode=True) or b""
+            return payload.decode(errors="ignore")
+    return None
+
+
 # Gmail Operations
 
 
 def list_messages(
     max_results: int = 5, query: str | None = None
 ) -> list[dict[str, str]]:
-    """list_messages
-    List most recent messages in the inbox, optionally filtering by query
-    """
+    """List most recent messages in the inbox, optionally filtering by query"""
     service = get_gmail_service()
     result = (
         service.users()
@@ -105,10 +123,8 @@ def list_messages(
     return result.get("messages", [])
 
 
-def get_message_content(message_id: str) -> dict[str, str]:
-    """get_mnessage_content
-    Get a Email's metadata and content body
-    """
+def _fetch_raw(message_id: str) -> tuple[dict, object]:
+    """Shared helper: fetch raw email and return (api_content, parsed_message)."""
     service = get_gmail_service()
     content = (
         service.users()
@@ -116,15 +132,19 @@ def get_message_content(message_id: str) -> dict[str, str]:
         .get(userId="me", id=message_id, format="raw")
         .execute()
     )
-
     raw_bytes = base64.urlsafe_b64decode(content["raw"])
     email_message = BytesParser(policy=policy.default).parsebytes(raw_bytes)
+    return content, email_message
 
+
+def get_message_content(message_id: str) -> dict[str, str]:
+    """Get an email's metadata and plain-text content body."""
+    content, email_message = _fetch_raw(message_id)
     headers = _parse_headers(email_message)
     body = _extract_best_body_text(email_message)
 
-    output = {
-        "id": content.get("id"),  # Email Id
+    return {
+        "id": content.get("id"),
         "thread_id": content.get("threadId"),
         "from": headers["from"],
         "subject": headers["subject"],
@@ -132,17 +152,18 @@ def get_message_content(message_id: str) -> dict[str, str]:
         "body": body,
     }
 
-    return output
+
+def get_message_html_body(message_id: str) -> str | None:
+    """Get the raw HTML body of an email, preserving tags for structured parsing."""
+    _, email_message = _fetch_raw(message_id)
+    return _extract_html_body(email_message)
 
 
 def create_draft_message(message_id: str, reply_body: str):
-    """create_draft_message
-    Create a draft email that replies to the message ID with given body
-    """
+    """Create a draft email that replies to the message ID with given body"""
 
     service = get_gmail_service()
 
-    # Get the message
     message = get_message_content(message_id)
 
     if any(
@@ -152,7 +173,6 @@ def create_draft_message(message_id: str, reply_body: str):
             f"Cannot create draft for no-reply addresses. Got: `{message['from']}`"
         )
 
-    # Build the reply
     em = EmailMessage()
     em["To"] = message["from"]
     em["Subject"] = "RE: " + message["subject"]
@@ -184,9 +204,7 @@ def create_draft_message(message_id: str, reply_body: str):
 
 
 def send_draft(draft_id: str):
-    """send_draft
-    Send the draft email
-    """
+    """Send the draft email"""
 
     service = get_gmail_service()
 
