@@ -92,7 +92,8 @@ def run(newsletter_date: date | None = None) -> None:
                 existing = raw_store.get_article_by_url(article.url)
                 if existing and len(existing.raw_markdown) >= 500:
                     logger.info(
-                        "    Skipping %s — already in DB (%d chars)",
+                        "    Skipping %r (%s) — already in DB (%d chars)",
+                        article.title,
                         article.url,
                         len(existing.raw_markdown),
                     )

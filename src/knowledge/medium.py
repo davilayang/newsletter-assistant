@@ -19,19 +19,13 @@ from camoufox.async_api import AsyncCamoufox
 
 logger = logging.getLogger(__name__)
 
-# Known Medium-family domains (same as agent/tools.py)
-_MEDIUM_DOMAINS = re.compile(
-    r"^https?://(medium\.com|towardsdatascience\.com|betterprogramming\.pub"
+# Matches Medium article URLs: known domain + path ending with -<hex_id> (8–12 hex chars).
+# Profile pages (/m/signin, /@user), publication homepages, and tag pages don't carry
+# a hex suffix and are therefore excluded automatically.
+_ARTICLE_URL_RE = re.compile(
+    r"^https?://(?:medium\.com|towardsdatascience\.com|betterprogramming\.pub"
     r"|levelup\.gitconnected\.com|pub\.towardsai\.net)"
-)
-
-_SKIP_FRAGMENTS = (
-    "/m/signin",
-    "/m/unsubscribe",
-    "/m/global-identity",
-    "medium.com/tag/",
-    "medium.com/topic/",
-    "medium.com/plans",
+    r"/\S+-[a-f0-9]{8,12}$"
 )
 
 # Auth state
@@ -77,6 +71,13 @@ class Article:
 def parse_newsletter_email(html_body: str) -> list[Article]:
     """Extract article cards from a Medium newsletter HTML body.
 
+    NOTE: Article URLs are identified by the hex article ID suffix (-[a-f0-9]{8,12}),
+    which is present on every Medium article URL but absent on profile pages,
+    publication homepages, sign-in links, and other non-article paths.
+
+    Title is extracted from the <h2> element inside the <a> tag (Medium email
+    HTML structure). Snippet comes from <h3> in the same link block.
+
     Returns deduplicated Article objects (URL is the dedup key), capped at 20.
     """
     soup = BeautifulSoup(html_body, "html.parser")
@@ -84,43 +85,33 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
     seen: set[str] = set()
 
     for a_tag in soup.find_all("a", href=True):
-        url: str = str(a_tag["href"])
+        raw_url: str = str(a_tag["href"])
+        clean_url = raw_url.split("?")[0].rstrip("/")
 
-        if not _MEDIUM_DOMAINS.match(url):
+        if not _ARTICLE_URL_RE.match(clean_url):
             continue
-        if any(frag in url for frag in _SKIP_FRAGMENTS):
-            continue
-
-        clean_url = url.split("?")[0].rstrip("/")
         if clean_url in seen:
             continue
         seen.add(clean_url)
 
-        # Derive title: prefer text of the link; walk up if too short
-        title = a_tag.get_text(" ", strip=True)
-        if len(title) < 12:
-            for parent in a_tag.parents:
-                candidate = parent.get_text(" ", strip=True)
-                if 12 < len(candidate) < 250:
-                    title = candidate
-                    break
+        # Title: prefer <h2> inside the link; fall back to full link text
+        h2 = a_tag.find("h2")
+        if h2:
+            title = h2.get_text(" ", strip=True)
+        else:
+            title = a_tag.get_text(" ", strip=True)
 
-        # Try to find an author near the link (heuristic: next sibling text)
-        author = ""
-        parent_tag = a_tag.find_parent()
-        if parent_tag:
-            siblings = list(parent_tag.next_siblings)
-            for sib in siblings[:3]:
-                text = (
-                    sib.get_text(strip=True)
-                    if hasattr(sib, "get_text")
-                    else str(sib).strip()
-                )
-                if text and len(text) < 80:
-                    author = text
-                    break
+        # Snippet: <h3> inside the same link block (subtitle in Medium emails)
+        h3 = a_tag.find("h3")
+        snippet = h3.get_text(" ", strip=True) if h3 else ""
 
-        articles.append(Article(url=clean_url, title=title[:200], author=author[:100]))
+        articles.append(
+            Article(
+                url=clean_url,
+                title=title[:200],
+                snippet=snippet[:500],
+            )
+        )
         if len(articles) == 20:
             break
 

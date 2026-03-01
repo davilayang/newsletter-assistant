@@ -31,20 +31,11 @@ def _load_newsletters() -> dict[str, dict]:
 _NEWSLETTERS: dict[str, dict] = _load_newsletters()
 _NEWSLETTER_NAMES = ", ".join(f'"{k}"' for k in _NEWSLETTERS)
 
-# Known Medium-family domains
-_MEDIUM_DOMAINS = re.compile(
-    r"^https?://(medium\.com|towardsdatascience\.com|betterprogramming\.pub"
+# Matches Medium article URLs by hex ID suffix — same pattern as medium.py.
+_ARTICLE_URL_RE = re.compile(
+    r"^https?://(?:medium\.com|towardsdatascience\.com|betterprogramming\.pub"
     r"|levelup\.gitconnected\.com|pub\.towardsai\.net)"
-)
-
-# URL fragments that indicate non-article links
-_SKIP_FRAGMENTS = (
-    "/m/signin",
-    "/m/unsubscribe",
-    "/m/global-identity",
-    "medium.com/tag/",
-    "medium.com/topic/",
-    "medium.com/plans",
+    r"/\S+-[a-f0-9]{8,12}$"
 )
 
 
@@ -58,25 +49,17 @@ def _parse_articles(html: str) -> list[dict[str, str]]:
     seen: set[str] = set()
 
     for a_tag in soup.find_all("a", href=True):
-        url: str = str(a_tag["href"])
+        raw_url: str = str(a_tag["href"])
+        clean_url = raw_url.split("?")[0].rstrip("/")
 
-        if not _MEDIUM_DOMAINS.match(url):
+        if not _ARTICLE_URL_RE.match(clean_url):
             continue
-        if any(frag in url for frag in _SKIP_FRAGMENTS):
-            continue
-
-        clean_url = url.split("?")[0].rstrip("/")
         if clean_url in seen:
             continue
         seen.add(clean_url)
 
-        title = a_tag.get_text(" ", strip=True)
-        if len(title) < 12:
-            for parent in a_tag.parents:
-                candidate = parent.get_text(" ", strip=True)
-                if 12 < len(candidate) < 250:
-                    title = candidate
-                    break
+        h2 = a_tag.find("h2")
+        title = h2.get_text(" ", strip=True) if h2 else a_tag.get_text(" ", strip=True)
 
         articles.append({"title": title[:200], "url": clean_url})
         if len(articles) == 10:
