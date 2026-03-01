@@ -7,6 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from src.knowledge.fetcher import (
     _fetch_via_jina,
     _fetch_via_mediumapi,
@@ -101,9 +103,10 @@ def test_jina_skips_on_timeout(mock_get: MagicMock) -> None:
 
 
 @patch("src.knowledge.fetcher.settings")
-def test_mediumapi_skipped_without_key(mock_settings: MagicMock) -> None:
+def test_mediumapi_raises_without_key(mock_settings: MagicMock) -> None:
     mock_settings.rapidapi_key = ""
-    assert _fetch_via_mediumapi("https://medium.com/article-abc12345678") == ""
+    with pytest.raises(ValueError, match="RAPIDAPI_KEY"):
+        _fetch_via_mediumapi("https://medium.com/article-abc12345678")
 
 
 @patch("src.knowledge.fetcher.httpx.get")

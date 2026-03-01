@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 
 from datetime import date
 
@@ -20,6 +21,10 @@ logger = logging.getLogger(__name__)
 
 # Camoufox batch configuration
 _CAMOUFOX_BATCH_SIZE = 3
+
+# Jina Reader: free tier is 20 RPM (1 req/3s). Delay applies between calls in
+# a batch; skipped when a jina_api_key is set (free key = 500 RPM).
+_JINA_INTER_REQUEST_DELAY = 5.0  # seconds between requests on the free tier (20 RPM)
 
 # Jina Reader base URL, see https://jina.ai/reader/
 _JINA_BASE = "https://r.jina.ai/"
@@ -188,8 +193,12 @@ def fetch_articles(urls: list[str]) -> dict[str, str]:
     results: dict[str, str] = {}
     tier2_needed: list[str] = []
 
-    # Tier 1: Jina
-    for url in urls:
+    # Tier 1: Jina — throttle to stay within 20 RPM (free tier, no API key)
+    needs_jina_delay = not settings.jina_api_key
+    for i, url in enumerate(urls):
+        if needs_jina_delay and i > 0:
+            logger.debug("Jina inter-request delay %.1fs", _JINA_INTER_REQUEST_DELAY)
+            time.sleep(_JINA_INTER_REQUEST_DELAY)
         content = _fetch_via_jina(url)
         if content:
             logger.info("Tier 1 (Jina) success: %s (%d chars)", url, len(content))
