@@ -88,17 +88,25 @@ def run(newsletter_date: date | None = None) -> None:
 
             # Cap articles per email and skip URLs already stored with full content
             articles_to_fetch = []
+            cached_count = 0
             for article in articles[:max_articles]:
                 existing = raw_store.get_article_by_url(article.url)
                 if existing and len(existing.raw_markdown) >= 500:
                     logger.info(
-                        "    Skipping %r (%s) — already in DB (%d chars)",
+                        "    Cached:  %r (%d chars)",
                         article.title,
-                        article.url,
                         len(existing.raw_markdown),
                     )
+                    cached_count += 1
                     continue
+                logger.info("    Queued:  %r", article.title)
                 articles_to_fetch.append(article)
+
+            logger.info(
+                "    → %d to fetch, %d already cached.",
+                len(articles_to_fetch),
+                cached_count,
+            )
 
             urls_to_fetch = [a.url for a in articles_to_fetch]
             article_contents = (
@@ -117,8 +125,8 @@ def run(newsletter_date: date | None = None) -> None:
                     content = article.snippet
                     scrape_status = "snippet_only"
                     logger.warning(
-                        "    Stored snippet-only for %s (%d chars)",
-                        article.url,
+                        "    Snippet-only: %r (%d chars) — all tiers failed",
+                        article.title,
                         len(content),
                     )
                 else:
