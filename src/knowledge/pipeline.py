@@ -1,5 +1,5 @@
 # src/knowledge/pipeline.py
-# Daily scraping pipeline: Gmail → medium.py → raw_store → vector_store
+# Daily scraping pipeline: Gmail → fetcher (tiered) → raw_store → vector_store
 # Entry point: `uv run python -m src.knowledge.pipeline`
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 
 from src.core.gmail import ops as gmail_ops
-from src.knowledge import medium, raw_store, vector_store
+from src.knowledge import fetcher, medium, raw_store, vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,11 @@ _NEWSLETTERS_PATH = Path(__file__).parents[2] / "config" / "newsletters.yaml"
 MAX_EMAILS = 10  # safety cap per run
 
 
-def _medium_newsletters() -> list[tuple[str, str]]:
-    """Return (label, query) for every is_medium entry in newsletters.yaml."""
+def _medium_newsletters() -> list[tuple[str, dict]]:
+    """Return (label, cfg) for every is_medium entry in newsletters.yaml."""
     with _NEWSLETTERS_PATH.open() as f:
         config: dict = yaml.safe_load(f)
-    return [
-        (cfg["label"], cfg["query"]) for cfg in config.values() if cfg.get("is_medium")
-    ]
+    return [(cfg["label"], cfg) for cfg in config.values() if cfg.get("is_medium")]
 
 
 def run(newsletter_date: date | None = None) -> None:
@@ -42,13 +40,21 @@ def run(newsletter_date: date | None = None) -> None:
 
     logger.info("Pipeline starting for date %s", newsletter_date)
 
+    # Pre-flight: check Medium auth state once before any browser use
+    medium.check_auth_state()
+
     newsletters = _medium_newsletters()
     if not newsletters:
         logger.warning("No is_medium newsletters found in newsletters.yaml. Done.")
         return
 
-    for label, query in newsletters:
+    for label, cfg in newsletters:
         logger.info("Querying Gmail for: %s", label)
+
+        # Append newer_than to avoid pulling old emails on first run
+        base_query = cfg["query"]
+        query = f"{base_query} newer_than:30d"
+        max_articles = cfg.get("max_articles", 5)
 
         emails = gmail_ops.list_messages(max_results=MAX_EMAILS, query=query)
         if not emails:
@@ -80,10 +86,42 @@ def run(newsletter_date: date | None = None) -> None:
                 "    Parsed %d article(s) from message %s.", len(articles), message_id
             )
 
-            article_contents = medium.fetch_articles([a.url for a in articles])
+            # Cap articles per email and skip URLs already stored with full content
+            articles_to_fetch = []
+            for article in articles[:max_articles]:
+                existing = raw_store.get_article_by_url(article.url)
+                if existing and len(existing.raw_markdown) >= 500:
+                    logger.info(
+                        "    Skipping %s — already in DB (%d chars)",
+                        article.url,
+                        len(existing.raw_markdown),
+                    )
+                    continue
+                articles_to_fetch.append(article)
 
-            for article in articles:
-                content = article_contents.get(article.url) or article.snippet
+            urls_to_fetch = [a.url for a in articles_to_fetch]
+            article_contents = (
+                fetcher.fetch_articles(urls_to_fetch) if urls_to_fetch else {}
+            )
+
+            for article in articles[:max_articles]:
+                content = article_contents.get(article.url, "")
+
+                # Log and set status when falling back to snippet
+                if not content:
+                    existing = raw_store.get_article_by_url(article.url)
+                    if existing and len(existing.raw_markdown) >= 500:
+                        # Already stored with full content — skip upsert
+                        continue
+                    content = article.snippet
+                    scrape_status = "snippet_only"
+                    logger.warning(
+                        "    Stored snippet-only for %s (%d chars)",
+                        article.url,
+                        len(content),
+                    )
+                else:
+                    scrape_status = "full"
 
                 raw_store.upsert_article(
                     url=article.url,
@@ -91,17 +129,19 @@ def run(newsletter_date: date | None = None) -> None:
                     author=article.author,
                     newsletter_date=newsletter_date,
                     raw_markdown=content,
+                    scrape_status=scrape_status,
                 )
 
-                vector_store.upsert_article(
-                    url=article.url,
-                    raw_markdown=content,
-                    metadata={
-                        "title": article.title,
-                        "author": article.author,
-                        "newsletter_date": newsletter_date.isoformat(),
-                    },
-                )
+                if content:
+                    vector_store.upsert_article(
+                        url=article.url,
+                        raw_markdown=content,
+                        metadata={
+                            "title": article.title,
+                            "author": article.author,
+                            "newsletter_date": newsletter_date.isoformat(),
+                        },
+                    )
 
             raw_store.mark_processed(message_id)
             logger.info("    Message %s marked as processed.", message_id)

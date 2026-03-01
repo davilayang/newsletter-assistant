@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
 
+    # Article fetcher
+    jina_api_key: str = ""  # optional — higher rate limits on Jina Reader
+    rapidapi_key: str = ""  # required for Tier 2 (mediumapi.com)
+
     # Phase 2: Neo4j
     neo4j_uri: str = ""
     neo4j_user: str = ""

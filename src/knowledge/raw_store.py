@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-DB_PATH = Path("data/articles.db")
+DB_PATH = Path("data/medium.db")
 
 _CREATE_ARTICLES = """
 CREATE TABLE IF NOT EXISTS articles (
@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS articles (
     author           TEXT,
     newsletter_date  DATE,
     scraped_at       TIMESTAMP,
-    raw_markdown     TEXT
+    raw_markdown     TEXT,
+    scrape_status    TEXT DEFAULT 'full'
 );
 """
 
@@ -36,6 +37,7 @@ class ArticleRow:
     newsletter_date: date | None
     scraped_at: datetime
     raw_markdown: str
+    scrape_status: str = "full"
 
 
 def _connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
@@ -54,6 +56,7 @@ def upsert_article(
     author: str,
     newsletter_date: date | None,
     raw_markdown: str,
+    scrape_status: str = "full",
     db_path: Path = DB_PATH,
 ) -> None:
     """Insert or replace an article row. Idempotent on URL."""
@@ -61,14 +64,15 @@ def upsert_article(
     with _connect(db_path) as conn:
         conn.execute(
             """
-            INSERT INTO articles (url, title, author, newsletter_date, scraped_at, raw_markdown)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO articles (url, title, author, newsletter_date, scraped_at, raw_markdown, scrape_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(url) DO UPDATE SET
                 title           = excluded.title,
                 author          = excluded.author,
                 newsletter_date = excluded.newsletter_date,
                 scraped_at      = excluded.scraped_at,
-                raw_markdown    = excluded.raw_markdown
+                raw_markdown    = excluded.raw_markdown,
+                scrape_status   = excluded.scrape_status
             """,
             (
                 url,
@@ -77,6 +81,7 @@ def upsert_article(
                 newsletter_date.isoformat() if newsletter_date else None,
                 now,
                 raw_markdown,
+                scrape_status,
             ),
         )
 
@@ -120,6 +125,7 @@ def get_article_by_url(url: str, db_path: Path = DB_PATH) -> ArticleRow | None:
         else None,
         scraped_at=datetime.fromisoformat(row["scraped_at"]),
         raw_markdown=row["raw_markdown"] or "",
+        scrape_status=row["scrape_status"] or "full",
     )
 
 
@@ -147,6 +153,36 @@ def get_all_articles(
             else None,
             scraped_at=datetime.fromisoformat(r["scraped_at"]),
             raw_markdown=r["raw_markdown"] or "",
+            scrape_status=r["scrape_status"] or "full",
+        )
+        for r in rows
+    ]
+
+
+def get_articles_by_status(
+    status: str,
+    db_path: Path = DB_PATH,
+) -> list[ArticleRow]:
+    """Return all articles with a given scrape_status (e.g. 'snippet_only').
+
+    Useful for retry runs: fetch articles that previously failed full scraping.
+    """
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM articles WHERE scrape_status = ? ORDER BY scraped_at",
+            (status,),
+        ).fetchall()
+    return [
+        ArticleRow(
+            url=r["url"],
+            title=r["title"] or "",
+            author=r["author"] or "",
+            newsletter_date=date.fromisoformat(r["newsletter_date"])
+            if r["newsletter_date"]
+            else None,
+            scraped_at=datetime.fromisoformat(r["scraped_at"]),
+            raw_markdown=r["raw_markdown"] or "",
+            scrape_status=r["scrape_status"] or "full",
         )
         for r in rows
     ]

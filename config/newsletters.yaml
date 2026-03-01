@@ -12,6 +12,7 @@ medium:
   label: Medium Daily Digest
   query: 'from:noreply@medium.com "Medium Daily Digest"'
   is_medium: true
+  max_articles: 5
 
 boring cash cow:
   label: BoringCashCow

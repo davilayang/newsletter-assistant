@@ -40,13 +40,18 @@ _AUTH_WARN_DAYS = 30  # warn if auth file is older than this
 
 # Content validation: fewer chars than this is always a block/paywall page
 _MIN_CONTENT_CHARS = 500
-# Keywords that appear in Cloudflare challenge / Medium paywall pages
+# Keywords that appear in Cloudflare challenge or Medium paywall pages
 _BLOCK_MARKERS = (
     "security verification",
     "performing security verification",
     "enable javascript and cookies",
     "ray id:",
     "cloudflare",
+    # Medium paywall markers
+    "this story is only available to medium members",
+    "become a member to read this story",
+    "read the rest of this story with a free account",
+    "get access to this story",
 )
 
 # Retry / delay

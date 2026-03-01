@@ -13,7 +13,7 @@ from livekit.agents import RunContext, ToolError, function_tool
 
 from src.core.gmail import ops as gmail_ops
 from src.core.notes import save_note as _save_note
-from src.knowledge import medium, raw_store, vector_store
+from src.knowledge import fetcher, raw_store, vector_store
 
 # Truncate fetched article content to this length before passing to the LLM,
 # to keep context usage predictable.
@@ -239,8 +239,7 @@ async def read_article(context: RunContext, url: str) -> str:
     if cached and cached.raw_markdown:
         content = cached.raw_markdown
     else:
-        results = await loop.run_in_executor(None, lambda: medium.fetch_articles([url]))
-        content = results.get(url, "")
+        content = await loop.run_in_executor(None, fetcher.fetch_and_cache, url)
 
     if not content:
         raise ToolError(
