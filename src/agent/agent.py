@@ -29,7 +29,8 @@ from .tools import (
 # blocking the process trying to open a browser.
 get_gmail_service(interactive=False)
 
-server = AgentServer()
+# Prewarm VAD once at process startup so the first session has no load lag.
+server = AgentServer(userdata={"vad": silero.VAD.load()})
 
 
 class NewsletterAssistant(Agent):
@@ -68,7 +69,7 @@ async def session(ctx: JobContext):
             model="inworld/inworld-tts-1",
             voice="Olivia",
         ),
-        vad=silero.VAD.load(),
+        vad=ctx.userdata["vad"],
     )
 
     await agent_session.start(
