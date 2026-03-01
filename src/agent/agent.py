@@ -1,7 +1,13 @@
 # src/agent/agent.py
 # LiveKit voice agent — agent definition and session wiring.
 
+import re
+
+from pathlib import Path
 from textwrap import dedent
+from typing import AsyncIterable
+
+import yaml
 
 from livekit import agents
 from livekit.agents import (
@@ -9,10 +15,35 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     JobContext,
+    ModelSettings,
     inference,
     room_io,
 )
 from livekit.plugins import silero
+
+# ---------------------------------------------------------------------------
+# TTS text normalisation
+# ---------------------------------------------------------------------------
+_SPEECH_REPLACEMENTS_PATH = (
+    Path(__file__).parents[2] / "config" / "speech_replacements.yaml"
+)
+
+
+def _load_speech_replacements() -> list[tuple[re.Pattern, str]]:
+    """Load TTS normalisation rules from speech_replacements.yaml."""
+    with _SPEECH_REPLACEMENTS_PATH.open() as f:
+        entries = yaml.safe_load(f)
+    return [(re.compile(e["pattern"]), e["replacement"]) for e in entries]
+
+
+_SPEECH_REPLACEMENTS = _load_speech_replacements()
+
+
+def _normalize_for_speech(text: str) -> str:
+    for pattern, replacement in _SPEECH_REPLACEMENTS:
+        text = pattern.sub(replacement, text)
+    return text
+
 
 from src.core.gmail.client import get_gmail_service
 
@@ -58,6 +89,17 @@ class NewsletterAssistant(Agent):
             tools=[get_todays_newsletter, read_article, save_note, search_knowledge],
             allow_interruptions=True,
         )
+
+    async def tts_node(
+        self, text: AsyncIterable[str], model_settings: ModelSettings
+    ) -> AsyncIterable[str]:
+        """Normalise text before synthesis to fix common TTS mispronunciations."""
+
+        async def _normalised() -> AsyncIterable[str]:
+            async for chunk in text:
+                yield _normalize_for_speech(chunk)
+
+        return Agent.default.tts_node(self, _normalised(), model_settings)
 
 
 @server.rtc_session()

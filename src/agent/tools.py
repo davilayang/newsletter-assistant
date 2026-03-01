@@ -19,7 +19,7 @@ from src.knowledge import medium, raw_store, vector_store
 # to keep context usage predictable.
 _MAX_ARTICLE_CHARS = 12_000
 
-_NEWSLETTERS_PATH = Path(__file__).parents[2] / "newsletters.yaml"
+_NEWSLETTERS_PATH = Path(__file__).parents[2] / "config" / "newsletters.yaml"
 
 
 def _load_newsletters() -> dict[str, dict]:
@@ -168,10 +168,17 @@ async def get_todays_newsletter(
             )
             if not msg.get("body"):
                 continue
-            header = "\n".join(filter(None, [
-                f"Subject: {msg['subject']}" if msg.get("subject") else "",
-                f"Received: {msg['received_at']}" if msg.get("received_at") else "",
-            ]))
+            header = "\n".join(
+                filter(
+                    None,
+                    [
+                        f"Subject: {msg['subject']}" if msg.get("subject") else "",
+                        f"Received: {msg['received_at']}"
+                        if msg.get("received_at")
+                        else "",
+                    ],
+                )
+            )
             body = msg["body"][:4_000]
             parts.append(f"{header}\n\n{body}" if header else body)
 

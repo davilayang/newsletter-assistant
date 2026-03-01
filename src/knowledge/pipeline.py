@@ -16,7 +16,7 @@ from src.knowledge import medium, raw_store, vector_store
 
 logger = logging.getLogger(__name__)
 
-_NEWSLETTERS_PATH = Path(__file__).parents[2] / "newsletters.yaml"
+_NEWSLETTERS_PATH = Path(__file__).parents[2] / "config" / "newsletters.yaml"
 MAX_EMAILS = 10  # safety cap per run
 
 
@@ -25,9 +25,7 @@ def _medium_newsletters() -> list[tuple[str, str]]:
     with _NEWSLETTERS_PATH.open() as f:
         config: dict = yaml.safe_load(f)
     return [
-        (cfg["label"], cfg["query"])
-        for cfg in config.values()
-        if cfg.get("is_medium")
+        (cfg["label"], cfg["query"]) for cfg in config.values() if cfg.get("is_medium")
     ]
 
 
