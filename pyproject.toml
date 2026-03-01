@@ -19,6 +19,8 @@ dependencies = [
     "livekit-plugins-anthropic~=1.0",
     # Phase 2 — knowledge pipeline
     "chromadb>=0.6",
+    "camoufox>=0.4.11",
+    "markdownify>=1.2.2",
 ]
 
 [dependency-groups]
@@ -33,6 +35,8 @@ dev = [
     "pytest-cov>=4.0.0,<5.0.0",
     "pytest-mock>=3.10.0,<4.0.0",
     "ruff>=0.4.6,<1.0.0",
+    "playwright>=1.58.0",
+    "playwright-stealth>=2.0.2",
 ]
 
 ### Poe the Poet (Scripting) ###
