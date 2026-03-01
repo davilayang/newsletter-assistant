@@ -15,6 +15,7 @@ from livekit.agents import (
     AgentServer,
     AgentSession,
     JobContext,
+    JobProcess,
     ModelSettings,
     inference,
     room_io,
@@ -61,8 +62,6 @@ from .tools import (
 # blocking the process trying to open a browser.
 get_gmail_service(interactive=False)
 
-# Prewarm VAD once at process startup so the first session has no load lag.
-server = AgentServer(userdata={"vad": silero.VAD.load()})  # type: ignore[call-arg]
 
 
 class NewsletterAssistant(Agent):
@@ -102,6 +101,10 @@ class NewsletterAssistant(Agent):
 
         return Agent.default.tts_node(self, _normalised(), model_settings)
 
+# Prewarm VAD once at process startup so the first session has no load lag.
+def prewarm(proc: JobProcess):
+    proc.userdata["vad"] = silero.VAD.load()
+server = AgentServer(setup_fnc = prewarm)  # type: ignore[call-arg]
 
 @server.rtc_session()
 async def session(ctx: JobContext):
@@ -112,7 +115,7 @@ async def session(ctx: JobContext):
             model="inworld/inworld-tts-1",
             voice="Olivia",
         ),
-        vad=ctx.userdata["vad"],  # type: ignore[attr-defined]
+        vad=ctx.proc.userdata["vad"],  # type: ignore[attr-defined]
     )
 
     await agent_session.start(

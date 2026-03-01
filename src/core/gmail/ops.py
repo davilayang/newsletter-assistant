@@ -144,7 +144,7 @@ def get_message_content(message_id: str) -> dict[str, str]:
     headers = _parse_headers(email_message)
     body = _extract_best_body_text(email_message)
 
-    internal_date_ms = content.get("internalDate")
+    internal_date_ms = content.get("internalDate") # type: ignore
     if internal_date_ms:
         received_at = datetime.fromtimestamp(
             int(internal_date_ms) / 1000, tz=timezone.utc
