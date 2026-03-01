@@ -42,6 +42,21 @@ dev = [
 
 ### Poe the Poet (Scripting) ###
 
+[tool.poe.tasks.agent]
+cmd = "python -m src.agent.agent ${mode}"
+envfile = ".env"
+help = "Run the voice agent (loads .env). Modes: console (default), dev"
+
+  [[tool.poe.tasks.agent.args]]
+  name = "mode"
+  default = "console"
+  positional = true
+
+[tool.poe.tasks.pipeline]
+cmd = "python -m src.knowledge.pipeline"
+envfile = ".env"
+help = "Run the scraping pipeline once (loads .env)"
+
 [tool.poe.tasks.test]
 cmd = "pytest -v"
 help = "Run tests with verbose output (defaults to 'tests/' if no path given)"
