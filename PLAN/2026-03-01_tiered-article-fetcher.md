@@ -18,7 +18,7 @@ full article content.
 | Jina + Medium cookie forwarded | HTTP API | 20 RPM | Maybe | No |
 | Wayback Machine | HTTP | Unlimited | Sometimes | No |
 | Diffbot | HTTP API | 10,000/month | Yes (own infra) | No |
-| Firecrawl | HTTP API | 500/month | Yes | No |
+| Firecrawl | HTTP API | 500 one-time | Yes | No |
 | Medium GraphQL API (internal) | HTTP | Unlimited* | Yes (with auth) | No |
 | mediumapi.com (RapidAPI) | HTTP API | 150/month | Yes | No |
 | Steel.dev / Browserless | Remote browser | 10 hr/month | Yes (with cookies) | Remote |
@@ -30,9 +30,16 @@ full article content.
 - **RSS** — Medium RSS is always truncated for member articles, same as Jina without auth.
 - **Wayback Machine** — low hit rate (~20-30%), stale content, unreliable as a tier.
 - **Medium GraphQL API** — undocumented, could break at any deploy, arguably ToS-violating.
-- **Firecrawl** — 500/month is tight; Diffbot at 10k/month is strictly better value.
+- **Firecrawl** — 500 one-time credits (not monthly), burns out quickly in a daily pipeline.
 - **Steel.dev / Browserless** — adds remote dependency; local camoufox already works when not rate-limited, and is simpler.
-- **mediumapi.com** — 150/month is weak compared to Diffbot (10k/month). Dropped.
+
+**mediumapi.com — reconsidered as Tier 2 alternative to Diffbot:**
+150/month looks weak in isolation, but Tier 2 only fires on articles Jina
+fails (paywalled). If Jina handles ~50% of articles (public ones), mediumapi.com
+only sees ~75 calls/month — well within the free tier. Additionally, RapidAPI
+returns quota headers on every response (`x-ratelimit-requests-remaining`),
+eliminating the need for a custom budget counter. No work email required for
+signup. See Tier 2 section for both options.
 
 **Trafilatura** is worth adopting regardless of fetch tier — it replaces the
 current `BeautifulSoup + markdownify` extraction in `_html_to_markdown()` with
@@ -43,16 +50,22 @@ a more accurate article body detector.
 ## Proposed solution: three-tier fetcher
 
 ```
-Tier 1 — Jina Reader     fast, no browser, free (20 RPM)
+Tier 1 — Jina Reader           fast, no browser, free (20 RPM)
     ↓ fails (short/paywalled)
-Tier 2 — Diffbot          no browser, handles paywall via own infra, 10k/month free
-    ↓ fails or budget exhausted
-Tier 3 — camoufox         local browser, uses saved auth cookies, batched (3/session)
+Tier 2 — mediumapi.com          no browser, handles paywall, 150/month free
+       or Diffbot               no browser, handles paywall, 10k/month (work email required)
+    ↓ fails or quota exhausted
+Tier 3 — camoufox               local browser, uses saved auth cookies, batched (3/session)
 ```
 
 The key shift: camoufox moves from primary to last resort. Most public articles
-are handled by Jina with a plain HTTP request. Paywalled articles go to Diffbot
-(10,000/month budget — ~330/day, far more than needed) before touching a browser.
+are handled by Jina. Paywalled articles go to Tier 2 (mediumapi.com or Diffbot)
+before touching a browser.
+
+**Tier 2 recommendation:** mediumapi.com (RapidAPI) unless you have a work email
+for Diffbot. The 150/month limit is workable given Tier 1 handles public articles
+first, and RapidAPI's built-in quota headers (`x-ratelimit-requests-remaining`)
+mean no custom budget tracking code is needed.
 
 ---
 
@@ -90,32 +103,60 @@ _PAYWALL_MARKERS = (
 
 ---
 
-### Tier 2 — Diffbot (`https://api.diffbot.com/v3/article`)
+### Tier 2 — mediumapi.com (RapidAPI) *(recommended for personal use)*
 
-**How it works:** Structured article extraction API. Send a URL, receive clean
-article text + metadata. Diffbot runs its own crawling infrastructure, handles
-JavaScript rendering, and has been bypassing paywalls reliably since 2012.
+**How it works:** Unofficial scraping API on RapidAPI. Handles Medium member
+auth internally — returns full article content for paywalled posts.
+
+```
+GET https://medium2.p.rapidapi.com/article/{article_id}/content
+Headers: X-RapidAPI-Key: <key>
+```
+
+**Free tier:** 150 requests/month. Workable because Tier 1 (Jina) handles all
+public articles first — Tier 2 only fires for paywalled ones. At 5 articles/day
+with ~50% paywalled, that's ~75 calls/month.
+
+**Budget tracking — built in via RapidAPI headers:**
+Every response includes quota headers — no custom counter needed:
+```python
+remaining = int(resp.headers.get("x-ratelimit-requests-remaining", 0))
+if remaining < 10:
+    logger.warning("RapidAPI quota low (%d left) — falling to camoufox", remaining)
+    return ""
+```
+
+**Signup:** Standard email, no work email required.
+
+**Extracting article ID from URL:**
+```python
+import re
+def _medium_article_id(url: str) -> str | None:
+    m = re.search(r"-([a-f0-9]{8,12})$", url.rstrip("/").split("?")[0])
+    return m.group(1) if m else None
+```
+
+---
+
+### Tier 2 alternative — Diffbot (`https://api.diffbot.com/v3/article`)
+
+**How it works:** Structured article extraction API with its own crawling
+infrastructure. Has been handling paywalls reliably since 2012.
 
 ```
 GET https://api.diffbot.com/v3/article?url=<url>&token=<key>
 ```
 
-Returns JSON with `text` (plain text) and `html` fields. We convert with
-Trafilatura or markdownify.
+Returns `text` (plain text) and `html` fields — requires a conversion step to
+markdown (Trafilatura or markdownify).
 
-**Free tier:** 10,000 requests/month (~330/day). Far more than needed — a daily
-newsletter pipeline fetching 5 articles/day uses ~150/month (1.5% of budget).
+**Free tier:** 10,000 requests/month — far more headroom than mediumapi.com.
 
-**Paywall handling:** Diffbot has its own credentials and proxy rotation for
-paywalled content. Not guaranteed for every article, but significantly better
-than Jina unauthenticated.
+**Budget tracking:** Requires a custom `data/api_usage.json` counter (no
+equivalent of RapidAPI's response headers).
 
-**Budget management:** Same JSON counter as before (`data/api_usage.json`), but
-the threshold before falling to Tier 3 can be set much lower (e.g. ≤ 100
-remaining) given the generous limit.
-
-**Cost awareness:** $0 on free tier; paid plans start at $299/month (enterprise
-— irrelevant for personal use).
+**⚠ Signup requires a work/organisation email.** Not suitable for personal
+use without one. Prefer mediumapi.com unless you have access.
 
 ---
 
@@ -194,7 +235,7 @@ dedicated module. This keeps each file focused:
 
 | File | Responsibility |
 |---|---|
-| `fetcher.py` | Tier orchestration: Jina → Diffbot → camoufox |
+| `fetcher.py` | Tier orchestration: Jina → mediumapi.com → camoufox |
 | `medium.py` | camoufox browser implementation (Tier 3 only) |
 | `pipeline.py` | Email loop, dedup, storage — calls `fetcher.fetch_article()` |
 
@@ -207,7 +248,7 @@ def fetch_article(url: str) -> str:
     """Fetch full article markdown using the cheapest available tier.
 
     Returns empty string if all tiers fail.
-    Tiers: Jina Reader → Diffbot → camoufox (batched fallback).
+    Tiers: Jina Reader → mediumapi.com (RapidAPI) → camoufox (batched fallback).
     """
 ```
 
@@ -246,14 +287,14 @@ main article body compared to the current BeautifulSoup heuristic. Add to
 `.env` / `src/core/config.py` — add:
 ```python
 jina_api_key: str = ""               # optional, unlocks higher RPM
-diffbot_api_key: str = ""            # required for Tier 2
-diffbot_monthly_budget: int = 9900   # stay under 10k, leave buffer
+rapidapi_key: str = ""               # required for mediumapi.com (Tier 2)
+# No custom budget counter needed — read x-ratelimit-requests-remaining header
 ```
 
-`data/api_usage.json` — simple counter file (not in SQLite to keep it
-readable):
-```json
-{"diffbot": {"2026-03": 12}}
+If using Diffbot instead, replace `rapidapi_key` with:
+```python
+diffbot_api_key: str = ""
+# Also add data/api_usage.json counter (RapidAPI headers not available)
 ```
 
 ---
@@ -265,7 +306,7 @@ readable):
 | 1 | Add `trafilatura` dep; swap `_html_to_markdown()` in `medium.py` | 30 min |
 | 2 | Extend `_is_valid_content()` with paywall markers | 15 min |
 | 3 | Write `_fetch_via_jina(url)` in `fetcher.py` | 1 hr |
-| 4 | Write `_fetch_via_diffbot(url)` + budget tracker | 1 hr |
+| 4 | Write `_fetch_via_mediumapi(url)` — read quota from response headers | 1 hr |
 | 5 | Refactor camoufox into `_fetch_via_camoufox(urls)` with batch-restart | 1 hr |
 | 6 | Wire tiers into `fetcher.fetch_article()` | 30 min |
 | 7 | Update `pipeline.py`: cap, skip-if-exists, pre-flight auth, newer_than | 1 hr |
