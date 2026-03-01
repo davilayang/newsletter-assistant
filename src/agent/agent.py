@@ -55,6 +55,7 @@ class NewsletterAssistant(Agent):
             """
             ),
             tools=[get_todays_newsletter, read_article, save_note, search_knowledge],
+            allow_interruptions=True,
         )
 
 
