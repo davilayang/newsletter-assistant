@@ -1,6 +1,6 @@
-# newsletter-assistant
+# Email Newsletter Assistant
 
-A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium newsletter every morning by voice — ask questions, get summaries, take notes. A daily scraping pipeline accumulates article content into a searchable knowledge base.
+A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium newsletter by voice — ask questions, get summaries, take notes. A daily scraping pipeline accumulates article content into a searchable knowledge base.
 
 ## Prerequisites
 
@@ -11,14 +11,11 @@ A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium n
 3. **API keys** — create a `.env` file at the project root:
 
 ```env
-ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
 
 LIVEKIT_URL=...
 LIVEKIT_API_KEY=...
 LIVEKIT_API_SECRET=...
-
-DEEPGRAM_API_KEY=...
-ELEVENLABS_API_KEY=...
 ```
 
 ## Setup
@@ -74,7 +71,7 @@ Example session:
 
 Notes are saved to `NOTES/<today's date>_medium-notes.md`.
 
-### Scraping pipeline (Phase 2)
+### Scraping pipeline
 
 The pipeline reads unread Medium newsletter emails from Gmail, fetches full article content via a headless Firefox browser (camoufox), and stores everything in SQLite + ChromaDB for later search.
 
@@ -112,27 +109,6 @@ Register with Claude Code CLI by adding to `.mcp.json`:
 ```
 
 Check with `claude mcp list`.
-
-#### With Claude Desktop
-
-> On MacOS, install with `brew install claude`
-
-1. Open Claude Desktop → Settings → Developer
-2. Under "Local MCP servers", click "Edit Config"
-3. Add:
-
-```json
-{
-  "mcpServers": {
-    "mcp-gmail": {
-      "command": "uv",
-      "args": [
-        "--directory", "/absolute/path/to/newsletter-assistant", "run", "-m", "src.mcp.gmail.server"
-      ]
-    }
-  }
-}
-```
 
 ## Development
 
