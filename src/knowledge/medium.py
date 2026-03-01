@@ -48,6 +48,10 @@ _BLOCK_MARKERS = (
     "get access to this story",
 )
 
+# Warn if a newsletter email yields fewer than this many articles — likely
+# indicates Medium changed their email format or _ARTICLE_URL_RE needs updating.
+_MIN_EXPECTED_ARTICLES = 10
+
 # Retry / delay
 _MAX_RETRIES = 2
 _RETRY_BASE_DELAY = 2.0  # seconds; doubles each retry (2s, 4s)
@@ -114,6 +118,14 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
         )
         if len(articles) == 20:
             break
+
+    if 0 < len(articles) < _MIN_EXPECTED_ARTICLES:
+        logger.warning(
+            "Only %d article(s) parsed from newsletter email (expected %d+). "
+            "Medium may have changed their email format — check _ARTICLE_URL_RE.",
+            len(articles),
+            _MIN_EXPECTED_ARTICLES,
+        )
 
     return articles
 

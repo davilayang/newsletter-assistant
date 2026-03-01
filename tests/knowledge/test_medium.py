@@ -120,6 +120,21 @@ def test_parse_returns_article_dataclass() -> None:
     assert all(isinstance(a.title, str) for a in articles)
 
 
+def test_parse_warns_when_too_few_articles(caplog) -> None:
+    import logging
+
+    # Only 2 article links — below the _MIN_EXPECTED_ARTICLES threshold
+    html = """
+    <html><body>
+      <a href="https://medium.com/article-one-abc12345">First</a>
+      <a href="https://medium.com/article-two-def67890">Second</a>
+    </body></html>
+    """
+    with caplog.at_level(logging.WARNING, logger="src.knowledge.medium"):
+        parse_newsletter_email(html)
+    assert any("expected" in r.message for r in caplog.records)
+
+
 def test_parse_extracts_h2_title() -> None:
     articles = parse_newsletter_email(_SAMPLE_HTML)
     titles = [a.title for a in articles]
