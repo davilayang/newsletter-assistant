@@ -11,8 +11,11 @@ from livekit.agents import Agent, RunContext, ToolError, function_tool
 
 from src.core.gmail import ops as gmail_ops
 from src.core.notes import save_note as _save_note
+from src.knowledge import medium, raw_store, vector_store
 
-NEWSLETTER_QUERY = "from:noreply@medium.com is:unread"
+# Truncate fetched article content to this length before passing to the LLM,
+# to keep context usage predictable.
+_MAX_ARTICLE_CHARS = 12_000
 
 # Known Medium-family domains
 _MEDIUM_DOMAINS = re.compile(
@@ -99,6 +102,10 @@ class NewsletterAssistant(Agent):
         Call this when the user asks what is in their newsletter, wants to
         review today's reading, or asks what arrived this morning.
         """
+
+        # Query for newsletters from medium.com
+        NEWSLETTER_QUERY = 'from:noreply@medium.com "Medium Daily Digest"'
+
         loop = asyncio.get_event_loop()
 
         emails = await loop.run_in_executor(
@@ -155,3 +162,73 @@ class NewsletterAssistant(Agent):
             lambda: _save_note(content, article_title, article_url),
         )
         return f"Note saved to {path}."
+
+    @function_tool()
+    async def read_article(self, context: RunContext, url: str) -> str:
+        """Fetch and return the full text of a Medium article.
+
+        First checks the local knowledge base (fast); if not found, fetches
+        live from the web using the saved Medium auth credentials.
+
+        Call this when the user wants to read an article in depth, asks for a
+        detailed summary, or asks a specific question about a particular article.
+
+        Args:
+            url: The article URL, exactly as shown in the newsletter listing.
+        """
+        loop = asyncio.get_event_loop()
+
+        # 1. Check local cache first — instant, no network needed.
+        cached = await loop.run_in_executor(
+            None, lambda: raw_store.get_article_by_url(url)
+        )
+        if cached and cached.raw_markdown:
+            content = cached.raw_markdown
+        else:
+            # 2. Live fetch via camoufox — runs in a thread to avoid blocking
+            #    the event loop (fetch_articles uses asyncio.run internally).
+            results = await loop.run_in_executor(
+                None, lambda: medium.fetch_articles([url])
+            )
+            content = results.get(url, "")
+
+        if not content:
+            raise ToolError(
+                f"Could not retrieve content for {url}. "
+                "The article may be blocked or the auth state may need refreshing."
+            )
+
+        return content[:_MAX_ARTICLE_CHARS]
+
+    @function_tool()
+    async def search_knowledge(self, context: RunContext, query: str) -> str:
+        """Search the accumulated knowledge base of past Medium articles.
+
+        Call this when the user asks what they have read about a topic, wants
+        to recall a past article, or asks a question that might be answered by
+        previously scraped content.
+
+        Args:
+            query: A natural-language description of what to search for.
+        """
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(
+            None,
+            lambda: vector_store.search(query, n_results=5),
+        )
+
+        if not results:
+            return (
+                "The knowledge base is empty or no relevant articles were found. "
+                "Try running the pipeline first: uv run python -m src.knowledge.pipeline"
+            )
+
+        lines = [f"Found {len(results)} relevant passage(s) from past articles:\n"]
+        for i, r in enumerate(results, 1):
+            lines.append(
+                f"{i}. [{r.title or 'Untitled'}]({r.url})"
+                + (f" — {r.author}" if r.author else "")
+            )
+            lines.append(f"   {r.chunk[:300].strip()}…\n")
+
+        return "\n".join(lines)

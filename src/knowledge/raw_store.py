@@ -105,6 +105,26 @@ def mark_processed(gmail_message_id: str, db_path: Path = DB_PATH) -> None:
         )
 
 
+def get_article_by_url(url: str, db_path: Path = DB_PATH) -> ArticleRow | None:
+    """Return a single article by URL, or None if not found."""
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM articles WHERE url = ?", (url,)
+        ).fetchone()
+    if row is None:
+        return None
+    return ArticleRow(
+        url=row["url"],
+        title=row["title"] or "",
+        author=row["author"] or "",
+        newsletter_date=date.fromisoformat(row["newsletter_date"])
+        if row["newsletter_date"]
+        else None,
+        scraped_at=datetime.fromisoformat(row["scraped_at"]),
+        raw_markdown=row["raw_markdown"] or "",
+    )
+
+
 def get_all_articles(
     since: date | None = None,
     db_path: Path = DB_PATH,
