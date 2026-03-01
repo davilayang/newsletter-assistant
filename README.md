@@ -1,6 +1,6 @@
-# mcp-project
+# newsletter-assistant
 
-A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium newsletter every morning by voice — ask questions, get summaries, take notes.
+A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium newsletter every morning by voice — ask questions, get summaries, take notes. A daily scraping pipeline accumulates article content into a searchable knowledge base.
 
 ## Prerequisites
 
@@ -29,6 +29,16 @@ uv sync
 
 On first run the Gmail OAuth consent flow will open in your browser and save a token to `creds/token.json`.
 
+### Medium authentication (required for full article content)
+
+The scraping pipeline and the agent's `read_article` tool fetch full article content through your Medium account. Run this once to save your session credentials:
+
+```bash
+uv run python scripts/medium_login.py
+```
+
+A browser window will open — log in to Medium, then press Enter in the terminal. Auth state is saved to `creds/medium_auth.json`. Re-run when fetching stops working (sessions typically last weeks to months).
+
 ## Usage
 
 ### Voice agent (Phase 1)
@@ -46,13 +56,41 @@ TERM_PROGRAM=0 uv run --env-file .env python -m src.agent.agent dev --reload
 # Then, visit https://agents-playground.livekit.io/
 ```
 
-Then speak or type to it — example session:
+The agent has four tools:
+
+| Tool | When it's called |
+|---|---|
+| `get_todays_newsletter` | "Load my newsletter", "What arrived this morning?" |
+| `read_article` | "Read me that article", "Summarise it in detail" |
+| `save_note` | "Take a note", "Remember this" |
+| `search_knowledge` | "What have I read about RAG?", "Find that article on transformers" |
+
+Example session:
 
 > "Load my newsletter."
-> "Summarise the third article."
-> "Take a note: this is relevant to my RAG project."
+> "Read the second article."
+> "Take a note: relevant to my RAG project."
+> "What have I read about vector databases?"
 
 Notes are saved to `NOTES/<today's date>_medium-notes.md`.
+
+### Scraping pipeline (Phase 2)
+
+The pipeline reads unread Medium newsletter emails from Gmail, fetches full article content via a headless Firefox browser (camoufox), and stores everything in SQLite + ChromaDB for later search.
+
+```bash
+uv run python -m src.knowledge.pipeline
+```
+
+Run this daily (cron / Airflow) to keep the knowledge base up to date. The pipeline is idempotent — safe to run multiple times.
+
+**Data files** (gitignored, back up `articles.db`):
+
+```
+data/
+  articles.db   # SQLite — source of truth for all scraped articles
+  chroma/       # ChromaDB vector index (rebuildable from articles.db)
+```
 
 ### Gmail MCP server
 
@@ -63,12 +101,11 @@ Exposes three tools to Claude: `get_unread_emails`, `create_draft_reply`, `send_
 Register with Claude Code CLI by adding to `.mcp.json`:
 
 ```json
-// Replace "/absolute/path/to/mcp-project" with the real path
 {
   "mcpServers": {
     "mcp-gmail": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/mcp-project", "run", "-m", "src.mcp.gmail.server"]
+      "args": ["--directory", "/absolute/path/to/newsletter-assistant", "run", "-m", "src.mcp.gmail.server"]
     }
   }
 }
@@ -80,19 +117,17 @@ Check with `claude mcp list`.
 
 > On MacOS, install with `brew install claude`
 
-1. Open Claude Desktop
-2. Click on "Settings" → "Developer"
-3. Under "Local MCP servers", click "Edit Config"
-4. Add the following configuration:
+1. Open Claude Desktop → Settings → Developer
+2. Under "Local MCP servers", click "Edit Config"
+3. Add:
 
 ```json
-// Replace "/Users/absolute/path/mcp-project" with the real path
 {
   "mcpServers": {
     "mcp-gmail": {
       "command": "uv",
       "args": [
-        "--directory", "/Users/absolute/path/mcp-project", "run", "-m", "src.mcp.gmail.server"
+        "--directory", "/absolute/path/to/newsletter-assistant", "run", "-m", "src.mcp.gmail.server"
       ]
     }
   }
@@ -113,10 +148,16 @@ uv run pytest tests/path/to/test_file.py -v  # single test file
 src/
   core/          # Shared: Gmail client, config, notes writer
   mcp/gmail/     # MCP server for Claude Code / Desktop
-  agent/         # LiveKit voice agent (Phase 1)
-  knowledge/     # Scraping pipeline + vector store (Phase 2)
-dags/            # Airflow DAGs (Phase 2)
-NOTES/           # Your saved session notes
+  agent/         # LiveKit voice agent + function tools (Phase 1)
+  knowledge/     # Scraping pipeline, SQLite store, ChromaDB (Phase 2)
+scripts/
+  medium_login.py   # One-time Medium auth setup
+dags/             # Airflow DAGs (Phase 2)
+data/             # Runtime data — gitignored
+  articles.db     # SQLite raw store
+  chroma/         # ChromaDB vector index
+creds/            # OAuth credentials — gitignored
+NOTES/            # Your saved session notes
 ```
 
 ## References
