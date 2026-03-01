@@ -40,7 +40,9 @@ dev = [
     "playwright-stealth>=2.0.2",
 ]
 
-### Poe the Poet (Scripting) ###
+# Poe the Poet (Scripting) #
+
+## Agent and Scraping Pipeline
 
 [tool.poe.tasks.agent]
 cmd = "python -m src.agent.agent ${mode}"
@@ -56,6 +58,8 @@ help = "Run the voice agent (loads .env). Modes: console (default), dev"
 cmd = "python -m src.knowledge.pipeline"
 envfile = ".env"
 help = "Run the scraping pipeline once (loads .env)"
+
+## Code QA ##
 
 [tool.poe.tasks.test]
 cmd = "pytest -v"
@@ -89,7 +93,7 @@ help = "Run type checking with mypy"
 sequence = ["fmt", "lint", "mypy", "test"]
 help = "Run all checks: formatting, linting, type checking, and tests"
 
-### Formatting, Typing and Tests ###
+## Dependency Configurations ##
 
 [tool.mypy]
 python_version = "3.13"
