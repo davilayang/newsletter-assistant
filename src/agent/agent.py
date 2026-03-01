@@ -123,7 +123,10 @@ async def session(ctx: JobContext):
     )
 
     await agent_session.generate_reply(
-        instructions="Greet the user warmly and offer to load their newsletter."
+        instructions=dedent(
+            "Greet the user warmly and offer to load their newsletter, "
+            "also mention what kind of newsletters are available."
+        )
     )
 
 
