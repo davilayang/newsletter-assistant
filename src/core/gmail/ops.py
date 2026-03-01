@@ -3,6 +3,7 @@
 
 import base64
 
+from datetime import datetime, timezone
 from email import policy
 from email.message import EmailMessage
 from email.parser import BytesParser
@@ -143,11 +144,20 @@ def get_message_content(message_id: str) -> dict[str, str]:
     headers = _parse_headers(email_message)
     body = _extract_best_body_text(email_message)
 
+    internal_date_ms = content.get("internalDate")
+    if internal_date_ms:
+        received_at = datetime.fromtimestamp(
+            int(internal_date_ms) / 1000, tz=timezone.utc
+        ).strftime("%a %d %b %Y %H:%M UTC")
+    else:
+        received_at = ""
+
     return {
         "id": content.get("id"),
         "thread_id": content.get("threadId"),
         "from": headers["from"],
         "subject": headers["subject"],
+        "received_at": received_at,
         "snippet": content.get("snippet"),
         "body": body,
     }

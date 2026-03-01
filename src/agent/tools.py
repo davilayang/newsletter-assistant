@@ -162,15 +162,18 @@ async def get_todays_newsletter(
     else:
         parts: list[str] = []
         for meta in emails[:2]:
-            html = await loop.run_in_executor(
+            msg = await loop.run_in_executor(
                 None,
-                lambda m=meta: gmail_ops.get_message_html_body(m["id"]),
+                lambda m=meta: gmail_ops.get_message_content(m["id"]),
             )
-            if html:
-                soup = BeautifulSoup(html, "html.parser")
-                for tag in soup.find_all(["script", "style", "nav", "footer"]):
-                    tag.decompose()
-                parts.append(soup.get_text(" ", strip=True)[:4_000])
+            if not msg.get("body"):
+                continue
+            header = "\n".join(filter(None, [
+                f"Subject: {msg['subject']}" if msg.get("subject") else "",
+                f"Received: {msg['received_at']}" if msg.get("received_at") else "",
+            ]))
+            body = msg["body"][:4_000]
+            parts.append(f"{header}\n\n{body}" if header else body)
 
         if not parts:
             raise ToolError(
