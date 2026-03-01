@@ -52,6 +52,7 @@ from src.core.gmail.client import get_gmail_service
 from .tools import (
     _NEWSLETTER_NAMES,
     get_todays_newsletter,
+    index_article,
     read_article,
     save_note,
     search_knowledge,
@@ -81,11 +82,20 @@ class NewsletterAssistant(Agent):
                   sentences, then invite follow-up questions.
                 - When saving a note, confirm exactly what was saved and to which file.
                 - If the user wants to go deeper on any article, discuss it in detail.
+                - After you have introduced or summarised any article, ask the user:
+                  "Would you like me to save this one to your knowledge base for future
+                  searches?" Call index_article only if they say yes.
 
                 Start by greeting the user and offering to load their latest newsletter.
             """
             ),
-            tools=[get_todays_newsletter, read_article, save_note, search_knowledge],
+            tools=[
+                get_todays_newsletter,
+                read_article,
+                index_article,
+                save_note,
+                search_knowledge,
+            ],
             allow_interruptions=True,
         )
 
@@ -114,6 +124,7 @@ async def session(ctx: JobContext):
     agent_session: AgentSession = AgentSession(
         stt="deepgram/nova-3",
         llm="openai/gpt-4.1-mini",
+        # https://docs.livekit.io/agents/models/tts/
         tts=inference.TTS(
             model="inworld/inworld-tts-1",
             voice="Olivia",

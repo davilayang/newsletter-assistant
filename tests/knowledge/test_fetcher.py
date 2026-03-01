@@ -241,13 +241,11 @@ def test_fetch_articles_all_tiers_fail(
 # ---------------------------------------------------------------------------
 
 
-@patch("src.knowledge.fetcher.vector_store.upsert_article")
 @patch("src.knowledge.fetcher.raw_store.upsert_article")
 @patch("src.knowledge.fetcher.fetch_articles")
 def test_fetch_and_cache_stores_full_content(
     mock_fetch: MagicMock,
     mock_raw_upsert: MagicMock,
-    mock_vec_upsert: MagicMock,
     tmp_path: Path,
 ) -> None:
     url = "https://medium.com/article-abc12345678"
@@ -261,16 +259,13 @@ def test_fetch_and_cache_stores_full_content(
     assert call_kwargs.kwargs.get("scrape_status") == "full" or (
         call_kwargs.args[5] == "full" if len(call_kwargs.args) > 5 else False
     )
-    mock_vec_upsert.assert_called_once()
 
 
-@patch("src.knowledge.fetcher.vector_store.upsert_article")
 @patch("src.knowledge.fetcher.raw_store.upsert_article")
 @patch("src.knowledge.fetcher.fetch_articles")
 def test_fetch_and_cache_stores_snippet_on_failure(
     mock_fetch: MagicMock,
     mock_raw_upsert: MagicMock,
-    mock_vec_upsert: MagicMock,
 ) -> None:
     url = "https://medium.com/article-abc12345678"
     mock_fetch.return_value = {url: ""}
@@ -279,4 +274,3 @@ def test_fetch_and_cache_stores_snippet_on_failure(
 
     assert result == ""
     mock_raw_upsert.assert_called_once()
-    mock_vec_upsert.assert_not_called()

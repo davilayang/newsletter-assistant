@@ -10,13 +10,13 @@
 
 medium:
   label: Medium Daily Digest
-  query: 'from:noreply@medium.com "Medium Daily Digest"'
+  query: from:noreply@medium.com 'Medium Daily Digest'
   is_medium: true
   max_articles: 5
 
 boring cash cow:
   label: BoringCashCow
-  query: 'from:hi_at_staticmaker.com_surplus-clip-chief@duck.com "BoringCashCow"'
+  query: from:hi_at_staticmaker.com_surplus-clip-chief@duck.com 'BoringCashCow'
   is_medium: false
 
 the batch:
@@ -26,5 +26,5 @@ the batch:
 
 north london:
   label: My North London
-  query: "from:mynorthlondon_at_mail.beehiiv.com_secret-tidy-backer@duck.com"
+  query: from:mynorthlondon_at_mail.beehiiv.com_secret-tidy-backer@duck.com
   is_medium: false

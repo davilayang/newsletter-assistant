@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS articles (
     newsletter_date  DATE,
     scraped_at       TIMESTAMP,
     raw_markdown     TEXT,
-    scrape_status    TEXT DEFAULT 'full'
+    scrape_status    TEXT DEFAULT 'full',
+    vector_status    TEXT DEFAULT 'pending'
 );
 """
 
@@ -38,6 +39,7 @@ class ArticleRow:
     scraped_at: datetime
     raw_markdown: str
     scrape_status: str = "full"
+    vector_status: str = "pending"
 
 
 def _connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
@@ -73,6 +75,7 @@ def upsert_article(
                 scraped_at      = excluded.scraped_at,
                 raw_markdown    = excluded.raw_markdown,
                 scrape_status   = excluded.scrape_status
+            -- vector_status intentionally excluded: re-fetching never resets approved/indexed state
             """,
             (
                 url,
@@ -126,6 +129,7 @@ def get_article_by_url(url: str, db_path: Path = DB_PATH) -> ArticleRow | None:
         scraped_at=datetime.fromisoformat(row["scraped_at"]),
         raw_markdown=row["raw_markdown"] or "",
         scrape_status=row["scrape_status"] or "full",
+        vector_status=row["vector_status"] or "pending",
     )
 
 
@@ -154,6 +158,7 @@ def get_all_articles(
             scraped_at=datetime.fromisoformat(r["scraped_at"]),
             raw_markdown=r["raw_markdown"] or "",
             scrape_status=r["scrape_status"] or "full",
+            vector_status=r["vector_status"] or "pending",
         )
         for r in rows
     ]
@@ -183,6 +188,43 @@ def get_articles_by_status(
             scraped_at=datetime.fromisoformat(r["scraped_at"]),
             raw_markdown=r["raw_markdown"] or "",
             scrape_status=r["scrape_status"] or "full",
+            vector_status=r["vector_status"] or "pending",
+        )
+        for r in rows
+    ]
+
+
+def set_vector_status(url: str, status: str, db_path: Path = DB_PATH) -> None:
+    """Set vector_status for one article ('pending' | 'ready' | 'indexed')."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE articles SET vector_status = ? WHERE url = ?",
+            (status, url),
+        )
+
+
+def get_articles_by_vector_status(
+    status: str,
+    db_path: Path = DB_PATH,
+) -> list[ArticleRow]:
+    """Return all articles with a given vector_status."""
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM articles WHERE vector_status = ? ORDER BY scraped_at",
+            (status,),
+        ).fetchall()
+    return [
+        ArticleRow(
+            url=r["url"],
+            title=r["title"] or "",
+            author=r["author"] or "",
+            newsletter_date=date.fromisoformat(r["newsletter_date"])
+            if r["newsletter_date"]
+            else None,
+            scraped_at=datetime.fromisoformat(r["scraped_at"]),
+            raw_markdown=r["raw_markdown"] or "",
+            scrape_status=r["scrape_status"] or "full",
+            vector_status=r["vector_status"] or "pending",
         )
         for r in rows
     ]

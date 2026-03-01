@@ -1,10 +1,15 @@
 # src/knowledge/pipeline.py
-# Daily scraping pipeline: Gmail → fetcher (tiered) → raw_store → vector_store
+# Daily scraping pipeline: Gmail → fetcher (tiered) → raw_store
 # Entry point: `uv run python -m src.knowledge.pipeline`
+#
+# Vector store indexing is intentionally NOT done here — articles are stored
+# with vector_status='pending' and indexed only after the user explicitly
+# approves them (via the agent's index_article tool or index_ready() below).
 
 from __future__ import annotations
 
 import logging
+import sys
 
 from datetime import date
 from pathlib import Path
@@ -141,21 +146,55 @@ def run(newsletter_date: date | None = None) -> None:
                     scrape_status=scrape_status,
                 )
 
-                if content:
-                    vector_store.upsert_article(
-                        url=article.url,
-                        raw_markdown=content,
-                        metadata={
-                            "title": article.title,
-                            "author": article.author,
-                            "newsletter_date": newsletter_date.isoformat(),
-                        },
-                    )
-
             raw_store.mark_processed(message_id)
             logger.info("    Message %s marked as processed.", message_id)
 
     logger.info("Pipeline complete.")
+
+
+# ---------------------------------------------------------------------------
+# Manual vector store controls
+# ---------------------------------------------------------------------------
+
+
+def set_article_vector_status(url: str, status: str) -> None:
+    """Manually set vector_status for one article.
+
+    status: 'pending' | 'ready' | 'indexed'
+
+    Example:
+        uv run python -c "
+        from src.knowledge.pipeline import set_article_vector_status
+        set_article_vector_status('https://medium.com/...', 'ready')
+        "
+    """
+    raw_store.set_vector_status(url, status)
+    logger.info("Set vector_status=%r for %s", status, url)
+
+
+def index_ready() -> None:
+    """Index all articles with vector_status='ready' into the vector store.
+
+    Run manually:
+        uv run python -m src.knowledge.pipeline index
+    """
+    articles = raw_store.get_articles_by_vector_status("ready")
+    logger.info("Indexing %d ready article(s) into vector store.", len(articles))
+    for article in articles:
+        vector_store.upsert_article(
+            url=article.url,
+            raw_markdown=article.raw_markdown,
+            metadata={
+                "title": article.title,
+                "author": article.author,
+                "newsletter_date": article.newsletter_date.isoformat()
+                if article.newsletter_date
+                else "",
+            },
+        )
+        raw_store.set_vector_status(article.url, "indexed")
+        logger.info("  Indexed: %s", article.url)
+    logger.info("Done.")
 
 
 if __name__ == "__main__":
@@ -163,4 +202,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    run()
+    if len(sys.argv) > 1 and sys.argv[1] == "index":
+        index_ready()
+    else:
+        run()

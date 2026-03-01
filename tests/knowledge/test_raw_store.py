@@ -7,8 +7,10 @@ import pytest
 
 from src.knowledge.raw_store import (
     get_all_articles,
+    get_articles_by_vector_status,
     is_processed,
     mark_processed,
+    set_vector_status,
     upsert_article,
 )
 
@@ -105,3 +107,39 @@ def test_none_newsletter_date(db: Path) -> None:
     )
     rows = get_all_articles(db_path=db)
     assert rows[0].newsletter_date is None
+
+
+def test_default_vector_status_is_pending(db: Path) -> None:
+    upsert_article("https://medium.com/a", "A", "", None, "content", db_path=db)
+    rows = get_all_articles(db_path=db)
+    assert rows[0].vector_status == "pending"
+
+
+def test_set_vector_status(db: Path) -> None:
+    upsert_article("https://medium.com/a", "A", "", None, "content", db_path=db)
+    set_vector_status("https://medium.com/a", "indexed", db_path=db)
+    rows = get_all_articles(db_path=db)
+    assert rows[0].vector_status == "indexed"
+
+
+def test_upsert_preserves_vector_status(db: Path) -> None:
+    upsert_article("https://medium.com/a", "A", "", None, "v1", db_path=db)
+    set_vector_status("https://medium.com/a", "indexed", db_path=db)
+    # Re-fetch should NOT reset vector_status back to 'pending'
+    upsert_article("https://medium.com/a", "A", "", None, "v2", db_path=db)
+    rows = get_all_articles(db_path=db)
+    assert rows[0].vector_status == "indexed"
+
+
+def test_get_articles_by_vector_status(db: Path) -> None:
+    upsert_article("https://medium.com/a", "A", "", None, "content", db_path=db)
+    upsert_article("https://medium.com/b", "B", "", None, "content", db_path=db)
+    set_vector_status("https://medium.com/a", "indexed", db_path=db)
+
+    pending = get_articles_by_vector_status("pending", db_path=db)
+    indexed = get_articles_by_vector_status("indexed", db_path=db)
+
+    assert len(pending) == 1
+    assert pending[0].url == "https://medium.com/b"
+    assert len(indexed) == 1
+    assert indexed[0].url == "https://medium.com/a"

@@ -15,7 +15,7 @@ from datetime import date
 import httpx
 
 from src.core.config import settings
-from src.knowledge import medium, raw_store, vector_store
+from src.knowledge import medium, raw_store
 
 logger = logging.getLogger(__name__)
 
@@ -253,18 +253,5 @@ def fetch_and_cache(
         raw_markdown=content,
         scrape_status=scrape_status,
     )
-
-    if content:
-        vector_store.upsert_article(
-            url=url,
-            raw_markdown=content,
-            metadata={
-                "title": title,
-                "author": author,
-                "newsletter_date": newsletter_date.isoformat()
-                if newsletter_date
-                else "",
-            },
-        )
 
     return content

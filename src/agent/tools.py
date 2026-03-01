@@ -245,6 +245,43 @@ async def read_article(context: RunContext, url: str) -> str:
 
 
 @function_tool()
+async def index_article(context: RunContext, url: str) -> str:
+    """Add an article to the searchable knowledge base (vector store).
+
+    Call this ONLY after the user explicitly confirms they want to save it
+    when you asked them. Never call without asking first.
+
+    Args:
+        url: The article URL, exactly as shown in the newsletter listing.
+    """
+    loop = asyncio.get_event_loop()
+    cached = await loop.run_in_executor(None, lambda: raw_store.get_article_by_url(url))
+    if not cached or not cached.raw_markdown:
+        raise ToolError(f"Article not in local store: {url}. Read it first.")
+    if cached.vector_status == "indexed":
+        return f"Already indexed: {cached.title or url}"
+
+    await loop.run_in_executor(
+        None,
+        lambda: vector_store.upsert_article(
+            url=url,
+            raw_markdown=cached.raw_markdown,
+            metadata={
+                "title": cached.title,
+                "author": cached.author,
+                "newsletter_date": cached.newsletter_date.isoformat()
+                if cached.newsletter_date
+                else "",
+            },
+        ),
+    )
+    await loop.run_in_executor(
+        None, lambda: raw_store.set_vector_status(url, "indexed")
+    )
+    return f"Indexed: {cached.title or url}"
+
+
+@function_tool()
 async def search_knowledge(context: RunContext, query: str) -> str:
     """Search the accumulated knowledge base of past newsletter articles.
 
