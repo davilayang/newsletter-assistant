@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # LLM
     anthropic_api_key: str = ""
+    openai_api_key: str = ""
 
     # Phase 2: Neo4j
     neo4j_uri: str = ""
