@@ -38,20 +38,28 @@ A browser window will open — log in to Medium, then press Enter in the termina
 
 ## Usage
 
-### Voice agent (Phase 1)
+### Voice Agent
 
-Start the agent and connect via a LiveKit console:
+**Console mode** — text I/O in the terminal, no LiveKit room needed:
 
 ```bash
-# In console mode
+uv run poe agent
+# or equivalently:
 uv run --env-file .env python -m src.agent.agent console
-
-# In Livekit room
-uv run --env-file .env python -m src.agent.agent dev --reload
-## (If using iterm2)
-TERM_PROGRAM=0 uv run --env-file .env python -m src.agent.agent dev --reload
-# Then, visit https://agents-playground.livekit.io/
 ```
+
+**Dev mode** — connects to a LiveKit room with hot reload:
+
+```bash
+uv run poe agent dev
+# or equivalently:
+uv run --env-file .env python -m src.agent.agent dev --reload
+
+# If using iTerm2, suppress the conflicting TERM_PROGRAM variable:
+TERM_PROGRAM=0 uv run --env-file .env python -m src.agent.agent dev --reload
+```
+
+Then open https://agents-playground.livekit.io/ and connect with your LiveKit credentials to speak with the agent.
 
 The agent has four tools:
 
@@ -76,7 +84,9 @@ Notes are saved to `NOTES/<today's date>_medium-notes.md`.
 The pipeline reads unread Medium newsletter emails from Gmail, fetches full article content via a headless Firefox browser (camoufox), and stores everything in SQLite + ChromaDB for later search.
 
 ```bash
-uv run python -m src.knowledge.pipeline
+uv run poe pipeline
+# or equivalently:
+uv run --env-file .env python -m src.knowledge.pipeline
 ```
 
 Run this daily (cron / Airflow) to keep the knowledge base up to date. The pipeline is idempotent — safe to run multiple times.
