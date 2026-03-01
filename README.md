@@ -138,6 +138,8 @@ NOTES/            # Your saved session notes
 
 ## References
 
-- https://modelcontextprotocol.io/docs/develop/connect-local-servers
 - https://github.com/livekit-examples/python-agents-examples
+- https://github.com/livekit-examples/agent-starter-python
+- https://github.com/livekit/python-sdks
+- https://modelcontextprotocol.io/docs/develop/connect-local-servers
 - https://support.google.com/mail/answer/7190
