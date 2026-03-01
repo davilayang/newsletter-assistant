@@ -97,8 +97,12 @@ def _resolve_newsletter(name: str) -> dict | None:
 
 
 @function_tool()
-async def get_todays_newsletter(context: RunContext, newsletter: str = "medium") -> str:
-    """Fetch unread newsletter emails from Gmail.
+async def get_todays_newsletter(
+    context: RunContext,
+    newsletter: str = "medium",
+    recency: str = "2d",
+) -> str:
+    """Fetch newsletter emails from Gmail.
 
     For Medium, returns a numbered list of article titles and URLs.
     For other newsletters, returns the email body as plain text for discussion.
@@ -110,6 +114,9 @@ async def get_todays_newsletter(context: RunContext, newsletter: str = "medium")
     Args:
         newsletter: Which newsletter to load. One of: "medium" (default),
             "boring cash cow", "the batch", "north london".
+        recency: Limit results to emails newer than this. Uses Gmail's
+            newer_than: operator (e.g. "1d", "7d", "2m"). Default is "2d".
+            Pass an empty string to fetch all emails regardless of age.
     """
     cfg = _resolve_newsletter(newsletter)
     if cfg is None:
@@ -118,10 +125,14 @@ async def get_todays_newsletter(context: RunContext, newsletter: str = "medium")
             f"Available options are: {_NEWSLETTER_NAMES}."
         )
 
+    query = cfg["query"]
+    if recency:
+        query = f"{query} newer_than:{recency}"
+
     loop = asyncio.get_event_loop()
     emails = await loop.run_in_executor(
         None,
-        lambda: gmail_ops.list_messages(max_results=5, query=cfg["query"]),
+        lambda: gmail_ops.list_messages(max_results=5, query=query),
     )
 
     if not emails:
