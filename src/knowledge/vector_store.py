@@ -87,7 +87,7 @@ def upsert_article(
         {**metadata, "url": url, "chunk_index": i} for i in range(len(chunks))
     ]
 
-    collection.upsert(ids=ids, documents=chunks, metadatas=chunk_metadata)
+    collection.upsert(ids=ids, documents=chunks, metadatas=chunk_metadata)  # type: ignore[arg-type]
 
 
 def search(
@@ -114,9 +114,9 @@ def search(
     for doc, meta, dist in zip(docs, metas, dists):
         output.append(
             SearchResult(
-                url=meta.get("url", ""),
-                title=meta.get("title", ""),
-                author=meta.get("author", ""),
+                url=str(meta.get("url", "")),
+                title=str(meta.get("title", "")),
+                author=str(meta.get("author", "")),
                 chunk=doc,
                 distance=float(dist),
             )

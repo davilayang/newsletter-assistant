@@ -38,6 +38,7 @@ dev = [
     "ruff>=0.4.6,<1.0.0",
     "playwright>=1.58.0",
     "playwright-stealth>=2.0.2",
+    "types-pyyaml>=6.0.12.20250915",
 ]
 
 # Poe the Poet (Scripting) #
@@ -97,6 +98,8 @@ help = "Run all checks: formatting, linting, type checking, and tests"
 
 [tool.mypy]
 python_version = "3.13"
+explicit_package_bases = true
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--pdbcls=IPython.terminal.debugger:TerminalPdb"

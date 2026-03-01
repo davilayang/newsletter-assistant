@@ -153,13 +153,13 @@ def get_message_content(message_id: str) -> dict[str, str]:
         received_at = ""
 
     return {
-        "id": content.get("id"),
-        "thread_id": content.get("threadId"),
+        "id": content.get("id") or "",
+        "thread_id": content.get("threadId") or "",
         "from": headers["from"],
         "subject": headers["subject"],
         "received_at": received_at,
-        "snippet": content.get("snippet"),
-        "body": body,
+        "snippet": content.get("snippet") or "",
+        "body": body or "",
     }
 
 

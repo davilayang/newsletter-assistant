@@ -20,6 +20,7 @@ from livekit.agents import (
     room_io,
 )
 from livekit.plugins import silero
+from livekit.rtc import AudioFrame
 
 # ---------------------------------------------------------------------------
 # TTS text normalisation
@@ -61,7 +62,7 @@ from .tools import (
 get_gmail_service(interactive=False)
 
 # Prewarm VAD once at process startup so the first session has no load lag.
-server = AgentServer(userdata={"vad": silero.VAD.load()})
+server = AgentServer(userdata={"vad": silero.VAD.load()})  # type: ignore[call-arg]
 
 
 class NewsletterAssistant(Agent):
@@ -92,7 +93,7 @@ class NewsletterAssistant(Agent):
 
     async def tts_node(
         self, text: AsyncIterable[str], model_settings: ModelSettings
-    ) -> AsyncIterable[str]:
+    ) -> AsyncIterable[AudioFrame]:
         """Normalise text before synthesis to fix common TTS mispronunciations."""
 
         async def _normalised() -> AsyncIterable[str]:
@@ -104,14 +105,14 @@ class NewsletterAssistant(Agent):
 
 @server.rtc_session()
 async def session(ctx: JobContext):
-    agent_session = AgentSession(
+    agent_session: AgentSession = AgentSession(
         stt="deepgram/nova-3",
         llm="openai/gpt-4.1-mini",
         tts=inference.TTS(
             model="inworld/inworld-tts-1",
             voice="Olivia",
         ),
-        vad=ctx.userdata["vad"],
+        vad=ctx.userdata["vad"],  # type: ignore[attr-defined]
     )
 
     await agent_session.start(

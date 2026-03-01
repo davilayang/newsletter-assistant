@@ -79,7 +79,7 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
     seen: set[str] = set()
 
     for a_tag in soup.find_all("a", href=True):
-        url: str = a_tag["href"]
+        url: str = str(a_tag["href"])
 
         if not _MEDIUM_DOMAINS.match(url):
             continue
@@ -102,9 +102,9 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
 
         # Try to find an author near the link (heuristic: next sibling text)
         author = ""
-        parent = a_tag.find_parent()
-        if parent:
-            siblings = list(parent.next_siblings)
+        parent_tag = a_tag.find_parent()
+        if parent_tag:
+            siblings = list(parent_tag.next_siblings)
             for sib in siblings[:3]:
                 text = (
                     sib.get_text(strip=True)
@@ -228,7 +228,7 @@ async def fetch_articles_async(
     results: dict[str, str] = {}
 
     async with AsyncCamoufox(headless=True) as browser:
-        context = await browser.new_context(**ctx_kwargs)
+        context = await browser.new_context(**ctx_kwargs)  # type: ignore[union-attr]
         page = await context.new_page()
 
         for i, url in enumerate(urls):

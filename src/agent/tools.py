@@ -58,7 +58,7 @@ def _parse_articles(html: str) -> list[dict[str, str]]:
     seen: set[str] = set()
 
     for a_tag in soup.find_all("a", href=True):
-        url: str = a_tag["href"]
+        url: str = str(a_tag["href"])
 
         if not _MEDIUM_DOMAINS.match(url):
             continue
@@ -143,7 +143,8 @@ async def get_todays_newsletter(
         for meta in emails[:3]:
             html = await loop.run_in_executor(
                 None,
-                lambda m=meta: gmail_ops.get_message_html_body(m["id"]),
+                gmail_ops.get_message_html_body,
+                meta["id"],
             )
             if html:
                 all_articles.extend(_parse_articles(html))
@@ -164,7 +165,8 @@ async def get_todays_newsletter(
         for meta in emails[:2]:
             msg = await loop.run_in_executor(
                 None,
-                lambda m=meta: gmail_ops.get_message_content(m["id"]),
+                gmail_ops.get_message_content,
+                meta["id"],
             )
             if not msg.get("body"):
                 continue
