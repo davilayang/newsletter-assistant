@@ -4,7 +4,10 @@
 import asyncio
 import re
 
+from pathlib import Path
 from textwrap import dedent
+
+import yaml
 
 from bs4 import BeautifulSoup
 from livekit.agents import Agent, RunContext, ToolError, function_tool
@@ -17,34 +20,16 @@ from src.knowledge import medium, raw_store, vector_store
 # to keep context usage predictable.
 _MAX_ARTICLE_CHARS = 12_000
 
-# Registry of supported newsletters.
-# key: canonical name used for matching (lowercase)
-# query: Gmail search query
-# label: human-readable name for responses
-# is_medium: True → parse article cards; False → return plain text body
-_NEWSLETTERS: dict[str, dict] = {
-    "medium": {
-        "query": 'from:noreply@medium.com "Medium Daily Digest"',
-        "label": "Medium Daily Digest",
-        "is_medium": True,
-    },
-    "boring cash cow": {
-        "query": "from:hi_at_staticmaker.com_surplus-clip-chief@duck.com",
-        "label": "BoringCashCow",
-        "is_medium": False,
-    },
-    "the batch": {
-        "query": "from:thebatch_at_deeplearning.ai_duckduckyang@duck.com",
-        "label": "The Batch @ DeepLearning.AI",
-        "is_medium": False,
-    },
-    "north london": {
-        "query": "from:secret-tidy-backer@duck.com",
-        "label": "My North London",
-        "is_medium": False,
-    },
-}
+_NEWSLETTERS_PATH = Path(__file__).parents[2] / "newsletters.yaml"
 
+
+def _load_newsletters() -> dict[str, dict]:
+    """Load newsletter registry from newsletters.yaml."""
+    with _NEWSLETTERS_PATH.open() as f:
+        return yaml.safe_load(f)
+
+
+_NEWSLETTERS: dict[str, dict] = _load_newsletters()
 _NEWSLETTER_NAMES = ", ".join(f'"{k}"' for k in _NEWSLETTERS)
 
 

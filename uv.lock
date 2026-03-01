@@ -1719,6 +1719,7 @@ dependencies = [
     { name = "livekit-plugins-elevenlabs" },
     { name = "markdownify" },
     { name = "mcp", extra = ["cli"] },
+    { name = "pyyaml" },
 ]
 
 [package.dev-dependencies]
@@ -1752,6 +1753,7 @@ requires-dist = [
     { name = "livekit-plugins-elevenlabs", specifier = "~=1.0" },
     { name = "markdownify", specifier = ">=1.2.2" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.25.0" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
 ]
 
 [package.metadata.requires-dev]
