@@ -93,13 +93,13 @@ def run(newsletter_date: date | None = None) -> None:
                 existing = raw_store.get_article_by_url(article.url)
                 if existing and len(existing.raw_markdown) >= 500:
                     logger.info(
-                        "    Cached:  %r (%d chars)",
-                        article.title,
+                        "    Cached:  %s (%d chars)",
+                        article.url,
                         len(existing.raw_markdown),
                     )
                     cached_count += 1
                     continue
-                logger.info("    Queued:  %r", article.title)
+                logger.info("    Queued:  %s", article.url)
                 articles_to_fetch.append(article)
 
             logger.info(
@@ -125,8 +125,8 @@ def run(newsletter_date: date | None = None) -> None:
                     content = article.snippet
                     scrape_status = "snippet_only"
                     logger.warning(
-                        "    Snippet-only: %r (%d chars) — all tiers failed",
-                        article.title,
+                        "    Snippet-only: %s (%d chars) — all tiers failed",
+                        article.url,
                         len(content),
                     )
                 else:
