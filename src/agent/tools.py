@@ -45,22 +45,33 @@ def _parse_articles(html: str) -> list[dict[str, str]]:
     Returns a list of {title, url} dicts, capped at 10.
     """
     soup = BeautifulSoup(html, "html.parser")
-    articles: list[dict[str, str]] = []
-    seen: set[str] = set()
 
+    # Pass 1: group all matching <a> tags by URL (Medium links each article from
+    # both a thumbnail image and a title <h2> — we need the latter for the title).
+    url_order: list[str] = []
+    url_tags: dict[str, list] = {}
     for a_tag in soup.find_all("a", href=True):
         raw_url: str = str(a_tag["href"])
         clean_url = raw_url.split("?")[0].rstrip("/")
-
         if not _ARTICLE_URL_RE.match(clean_url):
             continue
-        if clean_url in seen:
-            continue
-        seen.add(clean_url)
+        if clean_url not in url_tags:
+            url_order.append(clean_url)
+            url_tags[clean_url] = []
+        url_tags[clean_url].append(a_tag)
 
-        h2 = a_tag.find("h2")
-        title = h2.get_text(" ", strip=True) if h2 else a_tag.get_text(" ", strip=True)
-
+    # Pass 2: pick the first <a> with actual text content for each URL.
+    articles: list[dict[str, str]] = []
+    for clean_url in url_order:
+        title = ""
+        for a_tag in url_tags[clean_url]:
+            h2 = a_tag.find("h2")
+            candidate = (
+                h2.get_text(" ", strip=True) if h2 else a_tag.get_text(" ", strip=True)
+            )
+            if candidate:
+                title = candidate
+                break
         articles.append({"title": title[:200], "url": clean_url})
         if len(articles) == 10:
             break

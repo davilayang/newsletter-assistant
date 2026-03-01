@@ -75,39 +75,46 @@ class Article:
 def parse_newsletter_email(html_body: str) -> list[Article]:
     """Extract article cards from a Medium newsletter HTML body.
 
-    NOTE: Article URLs are identified by the hex article ID suffix (-[a-f0-9]{8,12}),
+    Article URLs are identified by the hex article ID suffix (-[a-f0-9]{8,12}),
     which is present on every Medium article URL but absent on profile pages,
     publication homepages, sign-in links, and other non-article paths.
 
-    Title is extracted from the <h2> element inside the <a> tag (Medium email
-    HTML structure). Snippet comes from <h3> in the same link block.
+    Medium emails link to each article from multiple <a> tags (thumbnail image,
+    title, and "Read more" button). We group all tags by URL and pick the one
+    that contains an <h2> title — usually the second link in each card.
 
     Returns deduplicated Article objects (URL is the dedup key), capped at 20.
     """
     soup = BeautifulSoup(html_body, "html.parser")
-    articles: list[Article] = []
-    seen: set[str] = set()
 
+    # Pass 1: collect all matching <a> tags grouped by clean URL, preserving order.
+    url_order: list[str] = []
+    url_tags: dict[str, list] = {}
     for a_tag in soup.find_all("a", href=True):
         raw_url: str = str(a_tag["href"])
         clean_url = raw_url.split("?")[0].rstrip("/")
-
         if not _ARTICLE_URL_RE.match(clean_url):
             continue
-        if clean_url in seen:
-            continue
-        seen.add(clean_url)
+        if clean_url not in url_tags:
+            url_order.append(clean_url)
+            url_tags[clean_url] = []
+        url_tags[clean_url].append(a_tag)
 
-        # Title: prefer <h2> inside the link; fall back to full link text
-        h2 = a_tag.find("h2")
-        if h2:
-            title = h2.get_text(" ", strip=True)
-        else:
-            title = a_tag.get_text(" ", strip=True)
-
-        # Snippet: <h3> inside the same link block (subtitle in Medium emails)
-        h3 = a_tag.find("h3")
-        snippet = h3.get_text(" ", strip=True) if h3 else ""
+    # Pass 2: for each URL pick the <a> tag with the best title.
+    articles: list[Article] = []
+    for clean_url in url_order:
+        title = ""
+        snippet = ""
+        for a_tag in url_tags[clean_url]:
+            h2 = a_tag.find("h2")
+            candidate = (
+                h2.get_text(" ", strip=True) if h2 else a_tag.get_text(" ", strip=True)
+            )
+            if candidate:
+                title = candidate
+                h3 = a_tag.find("h3")
+                snippet = h3.get_text(" ", strip=True) if h3 else ""
+                break
 
         articles.append(
             Article(
