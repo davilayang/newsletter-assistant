@@ -17,6 +17,48 @@ from src.knowledge import medium, raw_store, vector_store
 # to keep context usage predictable.
 _MAX_ARTICLE_CHARS = 12_000
 
+# Registry of supported newsletters.
+# key: canonical name used for matching (lowercase)
+# query: Gmail search query
+# label: human-readable name for responses
+# is_medium: True → parse article cards; False → return plain text body
+_NEWSLETTERS: dict[str, dict] = {
+    "medium": {
+        "query": 'from:noreply@medium.com "Medium Daily Digest"',
+        "label": "Medium Daily Digest",
+        "is_medium": True,
+    },
+    "boring cash cow": {
+        "query": "from:hi_at_staticmaker.com_surplus-clip-chief@duck.com",
+        "label": "BoringCashCow",
+        "is_medium": False,
+    },
+    "the batch": {
+        "query": "from:thebatch_at_deeplearning.ai_duckduckyang@duck.com",
+        "label": "The Batch @ DeepLearning.AI",
+        "is_medium": False,
+    },
+    "north london": {
+        "query": "from:secret-tidy-backer@duck.com",
+        "label": "My North London",
+        "is_medium": False,
+    },
+}
+
+_NEWSLETTER_NAMES = ", ".join(f'"{k}"' for k in _NEWSLETTERS)
+
+
+def _resolve_newsletter(name: str) -> dict | None:
+    """Return the newsletter config for a given name, using fuzzy matching."""
+    key = name.lower().strip()
+    if key in _NEWSLETTERS:
+        return _NEWSLETTERS[key]
+    for canonical, cfg in _NEWSLETTERS.items():
+        if key in canonical or canonical in key:
+            return cfg
+    return None
+
+
 # Known Medium-family domains
 _MEDIUM_DOMAINS = re.compile(
     r"^https?://(medium\.com|towardsdatascience\.com|betterprogramming\.pub"
@@ -77,15 +119,18 @@ class NewsletterAssistant(Agent):
     def __init__(self) -> None:
         super().__init__(
             instructions=dedent(
-                """\
-                You are a personal reading assistant for Medium newsletter articles.
-                Each morning you help the user review what arrived in their newsletter.
+                f"""\
+                You are a personal reading assistant for email newsletters.
+                Each morning you help the user review what arrived in their inbox.
+
+                Available newsletters: {_NEWSLETTER_NAMES}.
+                Default to "medium" if the user does not specify one.
 
                 Style:
                 - Speak naturally and conversationally. No markdown, bullet symbols,
                   asterisks, or emojis in your responses — you are speaking, not writing.
-                - When summarising an article, give the key insight in 2 to 3 sentences,
-                  then invite follow-up questions.
+                - When summarising an article or newsletter, give the key insight in 2 to 3
+                  sentences, then invite follow-up questions.
                 - When saving a note, confirm exactly what was saved and to which file.
                 - If the user wants to go deeper on any article, discuss it in detail.
 
@@ -95,48 +140,83 @@ class NewsletterAssistant(Agent):
         )
 
     @function_tool()
-    async def get_todays_newsletter(self, context: RunContext) -> str:
-        """Fetch today's unread Medium newsletter emails from Gmail and return
-        a structured list of articles with titles and URLs ready to discuss.
+    async def get_todays_newsletter(
+        self, context: RunContext, newsletter: str = "medium"
+    ) -> str:
+        """Fetch unread newsletter emails from Gmail.
 
-        Call this when the user asks what is in their newsletter, wants to
-        review today's reading, or asks what arrived this morning.
+        For Medium, returns a numbered list of article titles and URLs.
+        For other newsletters, returns the email body as plain text for discussion.
+
+        Call this when the user asks what is in their newsletter, wants to review
+        today's reading, or asks what arrived. If the user names a specific newsletter
+        (e.g. "The Batch", "Boring Cash Cow", "North London"), pass that name.
+
+        Args:
+            newsletter: Which newsletter to load. One of: "medium" (default),
+                "boring cash cow", "the batch", "north london".
         """
-
-        # Query for newsletters from medium.com
-        NEWSLETTER_QUERY = 'from:noreply@medium.com "Medium Daily Digest"'
+        cfg = _resolve_newsletter(newsletter)
+        if cfg is None:
+            return (
+                f'Unknown newsletter "{newsletter}". '
+                f"Available options are: {_NEWSLETTER_NAMES}."
+            )
 
         loop = asyncio.get_event_loop()
-
         emails = await loop.run_in_executor(
             None,
-            lambda: gmail_ops.list_messages(max_results=5, query=NEWSLETTER_QUERY),
+            lambda: gmail_ops.list_messages(max_results=5, query=cfg["query"]),
         )
 
         if not emails:
-            return "No unread Medium newsletter emails found in Gmail."
+            return f"No unread {cfg['label']} emails found in Gmail."
 
-        all_articles: list[dict[str, str]] = []
+        if cfg["is_medium"]:
+            # Parse structured article cards
+            all_articles: list[dict[str, str]] = []
+            for meta in emails[:3]:
+                html = await loop.run_in_executor(
+                    None,
+                    lambda m=meta: gmail_ops.get_message_html_body(m["id"]),
+                )
+                if html:
+                    all_articles.extend(_parse_articles(html))
 
-        for meta in emails[:3]:
-            html = await loop.run_in_executor(
-                None,
-                lambda m=meta: gmail_ops.get_message_html_body(m["id"]),
+            if not all_articles:
+                raise ToolError(
+                    f"Found {cfg['label']} emails but could not extract article links. "
+                    "The email format may have changed."
+                )
+
+            lines = [f"Found {len(all_articles)} articles in your {cfg['label']}:\n"]
+            for i, article in enumerate(all_articles, 1):
+                lines.append(f"{i}. {article['title']}\n   {article['url']}")
+            return "\n".join(lines)
+
+        else:
+            # Return plain text body for the agent to read and discuss
+            parts: list[str] = []
+            for meta in emails[:2]:
+                html = await loop.run_in_executor(
+                    None,
+                    lambda m=meta: gmail_ops.get_message_html_body(m["id"]),
+                )
+                if html:
+                    soup = BeautifulSoup(html, "html.parser")
+                    for tag in soup.find_all(["script", "style", "nav", "footer"]):
+                        tag.decompose()
+                    parts.append(soup.get_text(" ", strip=True)[:4_000])
+
+            if not parts:
+                raise ToolError(
+                    f"Found {cfg['label']} emails but could not extract content."
+                )
+
+            return (
+                f"Here is your latest {cfg['label']} newsletter:\n\n"
+                + "\n\n---\n\n".join(parts)
             )
-            if html:
-                all_articles.extend(_parse_articles(html))
-
-        if not all_articles:
-            raise ToolError(
-                "Found newsletter emails but could not extract any article links. "
-                "The email format may have changed."
-            )
-
-        lines = [f"Found {len(all_articles)} articles in your Medium newsletter:\n"]
-        for i, article in enumerate(all_articles, 1):
-            lines.append(f"{i}. {article['title']}\n   {article['url']}")
-
-        return "\n".join(lines)
 
     @function_tool()
     async def save_note(
