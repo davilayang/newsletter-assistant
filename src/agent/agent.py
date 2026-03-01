@@ -4,7 +4,14 @@
 from textwrap import dedent
 
 from livekit import agents
-from livekit.agents import Agent, AgentServer, AgentSession, JobContext, inference, room_io
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    JobContext,
+    inference,
+    room_io,
+)
 from livekit.plugins import silero
 
 from src.core.gmail.client import get_gmail_service

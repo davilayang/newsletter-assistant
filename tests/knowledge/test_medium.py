@@ -1,7 +1,12 @@
 # tests/knowledge/test_medium.py
 
 
-from src.knowledge.medium import Article, _is_valid_content, check_auth_state, parse_newsletter_email
+from src.knowledge.medium import (
+    Article,
+    _is_valid_content,
+    check_auth_state,
+    parse_newsletter_email,
+)
 
 # ---------------------------------------------------------------------------
 # Sample newsletter HTML (minimal but realistic structure)
@@ -122,7 +127,7 @@ def test_cloudflare_challenge_is_invalid() -> None:
 
 def test_cloudflare_ray_id_marker_is_invalid() -> None:
     # Even with enough chars, a Ray ID line flags it as a block page
-    md = ("ray id: `9d5755b5ab2b3238`\n\n" + "x" * 600)
+    md = "ray id: `9d5755b5ab2b3238`\n\n" + "x" * 600
     assert _is_valid_content(md) is False
 
 

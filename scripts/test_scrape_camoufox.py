@@ -5,9 +5,11 @@ Usage:
 """
 
 import asyncio
+
 from pathlib import Path
 
 import markdownify
+
 from bs4 import BeautifulSoup
 from camoufox.async_api import AsyncCamoufox
 

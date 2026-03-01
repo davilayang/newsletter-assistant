@@ -97,9 +97,7 @@ def _resolve_newsletter(name: str) -> dict | None:
 
 
 @function_tool()
-async def get_todays_newsletter(
-    context: RunContext, newsletter: str = "medium"
-) -> str:
+async def get_todays_newsletter(context: RunContext, newsletter: str = "medium") -> str:
     """Fetch unread newsletter emails from Gmail.
 
     For Medium, returns a numbered list of article titles and URLs.
@@ -214,15 +212,11 @@ async def read_article(context: RunContext, url: str) -> str:
     """
     loop = asyncio.get_event_loop()
 
-    cached = await loop.run_in_executor(
-        None, lambda: raw_store.get_article_by_url(url)
-    )
+    cached = await loop.run_in_executor(None, lambda: raw_store.get_article_by_url(url))
     if cached and cached.raw_markdown:
         content = cached.raw_markdown
     else:
-        results = await loop.run_in_executor(
-            None, lambda: medium.fetch_articles([url])
-        )
+        results = await loop.run_in_executor(None, lambda: medium.fetch_articles([url]))
         content = results.get(url, "")
 
     if not content:

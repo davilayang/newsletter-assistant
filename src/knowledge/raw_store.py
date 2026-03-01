@@ -108,9 +108,7 @@ def mark_processed(gmail_message_id: str, db_path: Path = DB_PATH) -> None:
 def get_article_by_url(url: str, db_path: Path = DB_PATH) -> ArticleRow | None:
     """Return a single article by URL, or None if not found."""
     with _connect(db_path) as conn:
-        row = conn.execute(
-            "SELECT * FROM articles WHERE url = ?", (url,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM articles WHERE url = ?", (url,)).fetchone()
     if row is None:
         return None
     return ArticleRow(
