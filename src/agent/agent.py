@@ -63,7 +63,6 @@ from .tools import (
 get_gmail_service(interactive=False)
 
 
-
 class NewsletterAssistant(Agent):
     def __init__(self) -> None:
         super().__init__(
@@ -101,10 +100,14 @@ class NewsletterAssistant(Agent):
 
         return Agent.default.tts_node(self, _normalised(), model_settings)
 
+
 # Prewarm VAD once at process startup so the first session has no load lag.
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
-server = AgentServer(setup_fnc = prewarm)  # type: ignore[call-arg]
+
+
+server = AgentServer(setup_fnc=prewarm)  # type: ignore[call-arg]
+
 
 @server.rtc_session()
 async def session(ctx: JobContext):
