@@ -119,7 +119,7 @@ def prewarm(proc: JobProcess):
 server = AgentServer(setup_fnc=prewarm)  # type: ignore[call-arg]
 
 
-@server.rtc_session()
+@server.rtc_session(agent_name="newsletter")
 async def session(ctx: JobContext):
     agent_session: AgentSession = AgentSession(
         stt="deepgram/nova-3",
