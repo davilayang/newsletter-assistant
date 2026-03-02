@@ -60,13 +60,9 @@ async function lkConnect() {
           // Show interim text immediately in the widget — no Python roundtrip.
           document.getElementById('lk-interim').textContent = seg.text;
         } else {
-          // Final: clear interim display and commit to Python transcript store.
+          // Final: clear interim display and push to Python over NiceGUI WebSocket.
           document.getElementById('lk-interim').textContent = '';
-          fetch('/transcript', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ role, text: seg.text }),
-          });
+          emitEvent('transcript', { role, text: seg.text });
         }
       }
     });
@@ -74,6 +70,7 @@ async function lkConnect() {
     _room.on(RoomEvent.Disconnected, () => {
       lkSetStatus('Disconnected');
       lkSetButtons(false);
+      emitEvent('lk_status', { connected: false });
       _room = null;
       _micTrack = null;
     });
@@ -84,6 +81,7 @@ async function lkConnect() {
 
     lkSetStatus('Connected \u2014 mic active');
     lkSetButtons(true);
+    emitEvent('lk_status', { connected: true });
   } catch (err) {
     lkSetStatus('Error: ' + err.message);
     console.error(err);
@@ -115,11 +113,7 @@ async function sendText(text) {
     new TextEncoder().encode(payload),
     { reliable: true }
   );
-  await fetch('/transcript', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ role: 'user', text }),
-  });
+  emitEvent('transcript', { role: 'user', text });
 }
 </script>
 """

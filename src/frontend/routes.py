@@ -3,17 +3,9 @@
 
 from __future__ import annotations
 
-from fastapi import Request
 from nicegui import app
 
 from src.core.config import settings
-
-# ---------------------------------------------------------------------------
-# Shared in-memory transcript state
-# Resets on server restart; shared across all browser tabs in the same process.
-# ---------------------------------------------------------------------------
-
-_transcript: list[dict[str, str]] = []
 
 _ROOM = "newsletter"
 _AGENT_NAME = "newsletter"
@@ -54,16 +46,3 @@ async def get_token() -> dict:
         await lk.aclose()
 
     return {"token": token, "url": str(settings.livekit_url)}
-
-
-@app.post("/transcript")
-async def post_transcript(request: Request) -> dict:
-    """Receive a final transcript segment from the JS audio widget.
-
-    Expected body: {"role": "user" | "assistant", "text": "..."}
-    """
-    data = await request.json()
-    text = str(data.get("text", "")).strip()
-    if text:
-        _transcript.append({"role": str(data.get("role", "user")), "text": text})
-    return {"ok": True}

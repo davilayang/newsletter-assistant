@@ -11,7 +11,6 @@ from src.core.notes import NOTES_DIR
 from src.knowledge import raw_store, vector_store
 
 from .livekit_widget import _AUDIO_WIDGET_HTML, _AUDIO_WIDGET_JS
-from .routes import _transcript
 
 _CSS = """
 body { font-size: 16px; }
@@ -42,10 +41,6 @@ body { font-size: 16px; }
 @ui.page("/")
 def main_page() -> None:
     """Single-page app: header + left drawer (articles/search) + main content."""
-
-    # Per-client render cursor — tracks how many transcript turns have been displayed.
-    # Defined as a list so the nested closure can mutate it.
-    rendered = [0]
 
     # Inject LiveKit JS once per page load — must be called before layout elements.
     ui.add_body_html(_AUDIO_WIDGET_JS)
@@ -106,10 +101,12 @@ def main_page() -> None:
 
         # Voice session card
         with ui.card().classes("w-full"):
-            ui.label("Voice Session").classes("text-subtitle1 q-mb-sm")
+            with ui.row().classes("items-center q-mb-sm gap-2"):
+                ui.label("Voice Session").classes("text-subtitle1")
+                status_badge = ui.badge("Disconnected", color="grey").props("rounded")
             ui.html(_AUDIO_WIDGET_HTML, sanitize=False)
 
-        # Transcript card — append-only, no full rebuild each tick
+        # Transcript card — turns appended directly via ui.on('transcript')
         with ui.card().classes("w-full"):
             ui.label("Transcript").classes("text-subtitle1 q-mb-sm")
             transcript_container = ui.column().classes("w-full gap-2 overflow-auto").style(
@@ -120,7 +117,7 @@ def main_page() -> None:
         with ui.expansion("Today's Notes", icon="notes").classes("w-full"):
             notes_md = ui.markdown("*No notes saved yet today.*").classes("w-full")
 
-    # ── Refresh callbacks ────────────────────────────────────────────────────
+    # ── Callbacks ────────────────────────────────────────────────────────────
 
     def refresh_articles() -> None:
         # No date filter — newsletter_date is NULL for manually scraped articles.
@@ -136,33 +133,46 @@ def main_page() -> None:
                         art.title or art.url, art.url, new_tab=True
                     ).classes("text-body2 q-mb-xs")
 
-    def refresh_transcript() -> None:
-        new_turns = _transcript[rendered[0] :]
-        if not new_turns:
-            return
-        with transcript_container:
-            for turn in new_turns:
-                bg = "blue-1" if turn["role"] == "assistant" else "green-1"
-                ui.markdown(
-                    f"**{turn['role'].capitalize()}:** {turn['text']}"
-                ).classes(f"q-pa-sm rounded bg-{bg} w-full")
-        rendered[0] += len(new_turns)
-        ui.run_javascript(
-            "const el = document.getElementById('transcript-scroll');"
-            "if (el) el.scrollTop = el.scrollHeight;"
-        )
-
     def refresh_notes() -> None:
         p = NOTES_DIR / f"{date.today()}_medium-notes.md"
         notes_md.set_content(
             p.read_text() if p.exists() else "*No notes saved yet today.*"
         )
 
+    # ── WebSocket push handlers (replaces HTTP POST + polling timer) ─────────
+
+    def on_transcript(e) -> None:
+        """Called instantly when JS emits a final transcript segment."""
+        role = e.args.get("role", "user")
+        text = e.args.get("text", "").strip()
+        if not text:
+            return
+        bg = "blue-1" if role == "assistant" else "green-1"
+        with transcript_container:
+            ui.markdown(f"**{role.capitalize()}:** {text}").classes(
+                f"q-pa-sm rounded bg-{bg} w-full"
+            )
+        ui.run_javascript(
+            "const el = document.getElementById('transcript-scroll');"
+            "if (el) el.scrollTop = el.scrollHeight;"
+        )
+
+    def on_lk_status(e) -> None:
+        """Update the Python-side status badge when LiveKit connects/disconnects."""
+        if e.args.get("connected"):
+            status_badge.set_text("Connected")
+            status_badge.props("color=positive")
+        else:
+            status_badge.set_text("Disconnected")
+            status_badge.props("color=grey")
+
+    ui.on("transcript", on_transcript)
+    ui.on("lk_status", on_lk_status)
+
     # Initial load
     refresh_articles()
     refresh_notes()
 
     # Timers — scoped to this client connection
-    ui.timer(0.25, refresh_transcript)
     ui.timer(10.0, refresh_notes)
     ui.timer(60.0, refresh_articles)
