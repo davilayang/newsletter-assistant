@@ -1,0 +1,30 @@
+# newsletters.yaml
+# Newsletter registry for the voice agent.
+#
+# Each entry:
+#   <canonical-name>:        # lowercase, used for fuzzy matching
+#     label: str             # human-readable name spoken by the agent
+#     query: str             # Gmail search query
+#     is_medium: bool        # true  → parse article cards (Medium HTML format)
+#                            # false → return plain text body for agent to discuss
+
+medium:
+  label: Medium Daily Digest
+  query: from:noreply@medium.com 'Medium Daily Digest'
+  is_medium: true
+  max_articles: 5
+
+boring cash cow:
+  label: BoringCashCow
+  query: from:hi_at_staticmaker.com_surplus-clip-chief@duck.com 'BoringCashCow'
+  is_medium: false
+
+the batch:
+  label: The Batch @ DeepLearning.AI
+  query: from:thebatch_at_deeplearning.ai_duckduckyang@duck.com
+  is_medium: false
+
+north london:
+  label: My North London
+  query: from:mynorthlondon_at_mail.beehiiv.com_secret-tidy-backer@duck.com
+  is_medium: false

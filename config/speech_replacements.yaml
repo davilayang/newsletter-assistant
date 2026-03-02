@@ -1,0 +1,51 @@
+# speech_replacements.yaml
+# Text normalisation rules applied before TTS synthesis.
+# Each entry is a regex pattern → replacement string.
+# Add new entries here as you encounter mispronounced words.
+#
+# Pattern syntax: Python regex (re module).
+# Use \b for word boundaries, (?i) for case-insensitive matching.
+# Capture groups in pattern can be referenced as \1, \2 in replacement.
+
+# Acronyms that TTS reads as words
+- pattern: '\bRAG\b'
+  replacement: 'R A G'
+
+- pattern: '\bLLMs?\b'
+  replacement: 'L L Ms'
+
+- pattern: '\bSQL\b'
+  replacement: 'sequel'
+
+- pattern: '\bNLP\b'
+  replacement: 'N L P'
+
+- pattern: '\bMLOps\b'
+  replacement: 'M L ops'
+
+# CamelCase names with awkward splits
+- pattern: '\bOpenAI\b'
+  replacement: 'Open A I'
+
+- pattern: '\bChatGPT\b'
+  replacement: 'Chat G P T'
+
+- pattern: '\bGitHub\b'
+  replacement: 'Git Hub'
+
+- pattern: '\bDeepMind\b'
+  replacement: 'Deep Mind'
+
+- pattern: '\bHuggingFace\b'
+  replacement: 'Hugging Face'
+
+# Currency shorthand
+- pattern: '\$(\d+(?:\.\d+)?)B\b'
+  replacement: '\1 billion dollars'
+
+- pattern: '\$(\d+(?:\.\d+)?)M\b'
+  replacement: '\1 million dollars'
+
+# Multipliers
+- pattern: '\b(\d+)x\b'
+  replacement: '\1 times'

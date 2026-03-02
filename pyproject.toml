@@ -19,6 +19,9 @@ dependencies = [
     "livekit-plugins-anthropic~=1.0",
     # Phase 2 — knowledge pipeline
     "chromadb>=0.6",
+    "camoufox>=0.4.11",
+    "markdownify>=1.2.2",
+    "pyyaml>=6.0.3",
 ]
 
 [dependency-groups]
@@ -33,9 +36,31 @@ dev = [
     "pytest-cov>=4.0.0,<5.0.0",
     "pytest-mock>=3.10.0,<4.0.0",
     "ruff>=0.4.6,<1.0.0",
+    "playwright>=1.58.0",
+    "playwright-stealth>=2.0.2",
+    "types-pyyaml>=6.0.12.20250915",
 ]
 
-### Poe the Poet (Scripting) ###
+# Poe the Poet (Scripting) #
+
+## Agent and Scraping Pipeline
+
+[tool.poe.tasks.agent]
+cmd = "python -m src.agent.agent ${mode}"
+envfile = ".env"
+help = "Run the voice agent (loads .env). Modes: console (default), dev"
+
+  [[tool.poe.tasks.agent.args]]
+  name = "mode"
+  default = "console"
+  positional = true
+
+[tool.poe.tasks.pipeline]
+cmd = "python -m src.knowledge.pipeline"
+envfile = ".env"
+help = "Run the scraping pipeline once (loads .env)"
+
+## Code QA ##
 
 [tool.poe.tasks.test]
 cmd = "pytest -v"
@@ -69,10 +94,12 @@ help = "Run type checking with mypy"
 sequence = ["fmt", "lint", "mypy", "test"]
 help = "Run all checks: formatting, linting, type checking, and tests"
 
-### Formatting, Typing and Tests ###
+## Dependency Configurations ##
 
 [tool.mypy]
 python_version = "3.13"
+explicit_package_bases = true
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--pdbcls=IPython.terminal.debugger:TerminalPdb"
