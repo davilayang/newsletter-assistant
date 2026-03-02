@@ -94,6 +94,7 @@ _AUDIO_WIDGET_HTML = """
     <button id="lk-mute"       onclick="lkToggleMute()" disabled>Mute</button>
     <button id="lk-disconnect" onclick="lkDisconnect()" disabled>Disconnect</button>
   </div>
+  <div id="lk-interim" style="font-size:0.85rem; color:#888; font-style:italic; min-height:1.2em;"></div>
 </div>
 """
 
@@ -132,14 +133,20 @@ async function lkConnect() {
     });
 
     _room.on(RoomEvent.TranscriptionReceived, (segments, participant) => {
+      const role = participant?.isAgent ? 'assistant' : 'user';
       for (const seg of segments) {
-        if (!seg.final) continue;
-        const role = participant?.isAgent ? 'assistant' : 'user';
-        fetch('/transcript', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role, text: seg.text }),
-        });
+        if (!seg.final) {
+          // Show interim text immediately in the widget — no Python roundtrip.
+          document.getElementById('lk-interim').textContent = seg.text;
+        } else {
+          // Final: clear interim display and commit to Python transcript store.
+          document.getElementById('lk-interim').textContent = '';
+          fetch('/transcript', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role, text: seg.text }),
+          });
+        }
       }
     });
 
@@ -271,7 +278,7 @@ def main_page() -> None:
             ui.label("Transcript").classes("text-subtitle1 q-mb-sm")
             transcript_container = ui.column().classes("w-full gap-2 overflow-auto").style(
                 "max-height:400px"
-            )
+            ).props('id=transcript-scroll')
 
         # Today's notes — collapsed by default
         with ui.expansion("Today's Notes", icon="notes").classes("w-full"):
@@ -280,11 +287,13 @@ def main_page() -> None:
     # ── Refresh callbacks ────────────────────────────────────────────────────
 
     def refresh_articles() -> None:
-        articles = raw_store.get_all_articles(since=date.today())
+        # No date filter — newsletter_date is NULL for manually scraped articles.
+        # Reverse so most recently scraped articles appear at the top.
+        articles = list(reversed(raw_store.get_all_articles()))
         article_container.clear()
         with article_container:
             if not articles:
-                ui.label("No articles scraped today.").classes("text-caption text-grey")
+                ui.label("No articles in database yet.").classes("text-caption text-grey")
             else:
                 for art in articles:
                     ui.link(
@@ -302,6 +311,10 @@ def main_page() -> None:
                     f"**{turn['role'].capitalize()}:** {turn['text']}"
                 ).classes(f"q-pa-sm rounded bg-{bg} w-full")
         rendered[0] += len(new_turns)
+        ui.run_javascript(
+            "const el = document.getElementById('transcript-scroll');"
+            "if (el) el.scrollTop = el.scrollHeight;"
+        )
 
     def refresh_notes() -> None:
         p = NOTES_DIR / f"{date.today()}_medium-notes.md"
@@ -314,7 +327,7 @@ def main_page() -> None:
     refresh_notes()
 
     # Timers — scoped to this client connection
-    ui.timer(1.0, refresh_transcript)
+    ui.timer(0.25, refresh_transcript)
     ui.timer(10.0, refresh_notes)
     ui.timer(60.0, refresh_articles)
 
