@@ -119,6 +119,43 @@ Two-line change, zero functional impact.
 
 ---
 
+### 4. Chat bubble left/right alignment — DEFERRED (blocked)
+
+**Goal:** User messages right-aligned, assistant messages left-aligned.
+
+`sent=(role == "user")` is already set — the Quasar prop is correct. The problem
+is that `q-chat-message` has no width in the flex column, so `align-items: flex-end`
+has nothing to push against.
+
+#### Attempts made (all stashed, none satisfactory)
+
+| # | Approach | Outcome |
+|---|---|---|
+| 1 | `.classes("w-full")` on `ui.chat_message` | Alignment ✓ but `width: 100%` + Quasar's internal padding causes horizontal overflow → scrollbar → "A" of "Assistant" scrolled off |
+| 2 | `overflow-x-hidden` on transcript container | Scrollbar gone, but clips right edge of green bubble (text cut mid-sentence) |
+| 3 | `.classes("self-end"/"self-start")`, no `w-full` | `overflow-y: auto` implicitly becomes `overflow-x: auto` (CSS spec: can't mix `visible` with non-`visible` on opposite axis) → scrollbar back |
+| 4 | `.classes("min-w-0 max-w-full self-end/self-start")` | Same result — classes target the Vue `<q-chat-message>` component tag, not the rendered `<div class="q-message">`. Quasar 2/Vue 3 does not reliably forward classes from component tags to root elements. |
+| 5 | CSS in `_CSS` targeting `#transcript-scroll .q-message--sent/.q-message--received` | Targets the actual rendered Quasar divs, so alignment classes land correctly. But horizontal overflow persists — root cause not confirmed, likely the inner `q-message-container` or flex container sizing. |
+
+#### Root cause hypothesis
+
+The `q-message-container` element inside `q-chat-message` (not the root `q-message`
+div) may be the element driving the overflow width. Neither Python-level classes nor
+the `#transcript-scroll .q-message` CSS rule targets it directly with a width
+constraint.
+
+#### Suggested next debug step
+
+Open browser devtools with the frontend running, inspect the transcript area, and
+check computed widths on `.q-message`, `.q-message-container`, and `.q-message-text`
+to find which element exceeds the container width. Then either:
+- Add CSS targeting that specific element, or
+- Wrap each `ui.chat_message` in a `ui.element('div').classes("w-full")` block
+  container (non-flex) so `q-chat-message` has a proper block containing block
+  rather than a flex item context.
+
+---
+
 ## Changes to defer
 
 | Pattern | Reason to defer |

@@ -52,7 +52,9 @@ async def main_page() -> None:
     # ── Header ──────────────────────────────────────────────────────────────
     dark = ui.dark_mode()
     with ui.header(elevated=True).classes("items-center gap-2"):
-        ui.button(icon="menu", on_click=lambda: drawer.toggle()).props("flat round dense")
+        ui.button(icon="menu", on_click=lambda: drawer.toggle()).props(
+            "flat round dense"
+        )
         ui.label("Newsletter Assistant").classes("text-h6 flex-1")
         ui.switch("Dark").bind_value(dark).props("dense")
 
@@ -65,8 +67,8 @@ async def main_page() -> None:
 
         ui.separator().classes("q-my-md")
         ui.label("Search Knowledge Base").classes("text-subtitle2 q-mb-xs")
-        search_input = ui.input(placeholder="Search…").classes("w-full").props(
-            "outlined dense"
+        search_input = (
+            ui.input(placeholder="Search…").classes("w-full").props("outlined dense")
         )
 
         async def run_search() -> None:
@@ -96,13 +98,14 @@ async def main_page() -> None:
             finally:
                 search_btn.props(remove="loading")
 
-        search_btn = ui.button("Search", on_click=run_search).props("unelevated").classes(
-            "w-full q-mt-xs"
+        search_btn = (
+            ui.button("Search", on_click=run_search)
+            .props("unelevated")
+            .classes("w-full q-mt-xs")
         )
 
     # ── Main content ────────────────────────────────────────────────────────
     with ui.column().classes("w-full q-pa-md gap-4"):
-
         # Voice session card
         with ui.card().classes("w-full"):
             with ui.row().classes("items-center q-mb-sm gap-2"):
@@ -113,9 +116,12 @@ async def main_page() -> None:
         # Transcript card — turns appended directly via ui.on('transcript')
         with ui.card().classes("w-full"):
             ui.label("Transcript").classes("text-subtitle1 q-mb-sm")
-            transcript_container = ui.column().classes("w-full gap-2 overflow-auto").style(
-                "max-height:400px"
-            ).props('id=transcript-scroll')
+            transcript_container = (
+                ui.column()
+                .classes("w-full gap-2 overflow-auto")
+                .style("max-height:400px")
+                .props("id=transcript-scroll")
+            )
 
         # Today's notes — collapsed by default
         with ui.expansion("Today's Notes", icon="notes").classes("w-full"):
@@ -130,12 +136,14 @@ async def main_page() -> None:
         article_container.clear()
         with article_container:
             if not articles:
-                ui.label("No articles in database yet.").classes("text-caption text-grey")
+                ui.label("No articles in database yet.").classes(
+                    "text-caption text-grey"
+                )
             else:
                 for art in articles:
-                    ui.link(
-                        art.title or art.url, art.url, new_tab=True
-                    ).classes("text-body2 q-mb-xs")
+                    ui.link(art.title or art.url, art.url, new_tab=True).classes(
+                        "text-body2 q-mb-xs"
+                    )
 
     async def refresh_notes() -> None:
         p = NOTES_DIR / f"{date.today()}_medium-notes.md"
