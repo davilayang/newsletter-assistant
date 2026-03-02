@@ -220,6 +220,32 @@ def main_page() -> None:
     # Inject LiveKit JS once per page load — must be called before layout elements.
     ui.add_body_html(_AUDIO_WIDGET_JS)
 
+    # Global style overrides: bigger font + styled audio-widget buttons.
+    ui.add_head_html("""<style>
+body { font-size: 16px; }
+#lk-connect, #lk-mute, #lk-disconnect {
+  padding: 8px 22px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: opacity 0.15s, filter 0.15s;
+}
+#lk-connect    { background: #1976d2; color: #fff; }
+#lk-mute       { background: #546e7a; color: #fff; }
+#lk-disconnect { background: #c62828; color: #fff; }
+#lk-connect:hover:not(:disabled)    { filter: brightness(1.12); }
+#lk-mute:hover:not(:disabled)       { filter: brightness(1.12); }
+#lk-disconnect:hover:not(:disabled) { filter: brightness(1.12); }
+#lk-connect:disabled, #lk-mute:disabled, #lk-disconnect:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+</style>""")
+
     # ── Header ──────────────────────────────────────────────────────────────
     with ui.header(elevated=True).classes("items-center gap-2"):
         ui.button(icon="menu", on_click=lambda: drawer.toggle()).props("flat round dense")
