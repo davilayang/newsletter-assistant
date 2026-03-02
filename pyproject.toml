@@ -22,6 +22,8 @@ dependencies = [
     "camoufox>=0.4.11",
     "markdownify>=1.2.2",
     "pyyaml>=6.0.3",
+    # Frontend
+    "nicegui>=3.8",
 ]
 
 [dependency-groups]
@@ -59,6 +61,11 @@ help = "Run the voice agent (loads .env). Modes: console (default), dev"
 cmd = "python -m src.knowledge.pipeline"
 envfile = ".env"
 help = "Run the scraping pipeline once (loads .env)"
+
+[tool.poe.tasks.frontend]
+cmd = "python -m src.frontend.app"
+envfile = ".env"
+help = "Run the NiceGUI frontend UI (loads .env)"
 
 ## Code QA ##
 
