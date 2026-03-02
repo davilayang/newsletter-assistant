@@ -112,6 +112,11 @@ def main_page() -> None:
 
 Two-line change, zero functional impact.
 
+> [!CAUTION]
+> **Issue encountered:** This greedy route currently intercepts internal NiceGUI
+> JSON/JS requests (like `_nicegui_ws`), causing "Unexpected token '<'" errors.
+> Implementation is deferred until a safer regex or path-exclusion logic is added.
+
 ---
 
 ## Changes to defer

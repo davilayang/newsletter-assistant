@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
-from nicegui import ui
+from nicegui import run, ui
 
 from src.core.notes import NOTES_DIR
 from src.knowledge import raw_store, vector_store
@@ -39,7 +39,7 @@ body { font-size: 16px; }
 
 
 @ui.page("/")
-def main_page() -> None:
+async def main_page() -> None:
     """Single-page app: header + left drawer (articles/search) + main content."""
 
     # Inject LiveKit JS once per page load — must be called before layout elements.
@@ -69,30 +69,34 @@ def main_page() -> None:
             "outlined dense"
         )
 
-        def run_search() -> None:
+        async def run_search() -> None:
             query = search_input.value.strip()
             if not query:
                 return
-            results = vector_store.search(query, n_results=5)
-            with ui.dialog() as dlg, ui.card().classes("w-full").style(
-                "max-width:560px"
-            ):
-                ui.label(f'Results for "{query}"').classes("text-subtitle1 q-mb-sm")
-                if not results:
-                    ui.label("No results found.").classes("text-caption")
-                for r in results:
-                    with ui.card().classes("w-full q-mb-sm"):
-                        ui.link(r.title or r.url, r.url, new_tab=True).classes(
-                            "text-body2 text-weight-medium"
-                        )
-                        ui.label(r.author).classes("text-caption text-grey")
-                        ui.label(r.chunk[:200] + "…").classes("text-body2")
-                ui.button("Close", on_click=dlg.close).props("flat").classes(
-                    "q-mt-sm"
-                )
-            dlg.open()
+            search_btn.props("loading")
+            try:
+                results = await run.io_bound(vector_store.search, query, n_results=5)
+                with ui.dialog() as dlg, ui.card().classes("w-full").style(
+                    "max-width:560px"
+                ):
+                    ui.label(f'Results for "{query}"').classes("text-subtitle1 q-mb-sm")
+                    if not results:
+                        ui.label("No results found.").classes("text-caption")
+                    for r in results:
+                        with ui.card().classes("w-full q-mb-sm"):
+                            ui.link(r.title or r.url, r.url, new_tab=True).classes(
+                                "text-body2 text-weight-medium"
+                            )
+                            ui.label(r.author).classes("text-caption text-grey")
+                            ui.label(r.chunk[:200] + "…").classes("text-body2")
+                    ui.button("Close", on_click=dlg.close).props("flat").classes(
+                        "q-mt-sm"
+                    )
+                dlg.open()
+            finally:
+                search_btn.props(remove="loading")
 
-        ui.button("Search", on_click=run_search).props("unelevated").classes(
+        search_btn = ui.button("Search", on_click=run_search).props("unelevated").classes(
             "w-full q-mt-xs"
         )
 
@@ -119,10 +123,10 @@ def main_page() -> None:
 
     # ── Callbacks ────────────────────────────────────────────────────────────
 
-    def refresh_articles() -> None:
+    async def refresh_articles() -> None:
         # No date filter — newsletter_date is NULL for manually scraped articles.
         # Reverse so most recently scraped articles appear at the top.
-        articles = list(reversed(raw_store.get_all_articles()))
+        articles = list(reversed(await run.io_bound(raw_store.get_all_articles)))
         article_container.clear()
         with article_container:
             if not articles:
@@ -133,11 +137,14 @@ def main_page() -> None:
                         art.title or art.url, art.url, new_tab=True
                     ).classes("text-body2 q-mb-xs")
 
-    def refresh_notes() -> None:
+    async def refresh_notes() -> None:
         p = NOTES_DIR / f"{date.today()}_medium-notes.md"
-        notes_md.set_content(
-            p.read_text() if p.exists() else "*No notes saved yet today.*"
+        content = (
+            await run.io_bound(p.read_text)
+            if p.exists()
+            else "*No notes saved yet today.*"
         )
+        notes_md.set_content(content)
 
     # ── WebSocket push handlers (replaces HTTP POST + polling timer) ─────────
 
@@ -147,10 +154,12 @@ def main_page() -> None:
         text = e.args.get("text", "").strip()
         if not text:
             return
-        bg = "blue-1" if role == "assistant" else "green-1"
         with transcript_container:
-            ui.markdown(f"**{role.capitalize()}:** {text}").classes(
-                f"q-pa-sm rounded bg-{bg} w-full"
+            ui.chat_message(
+                text=text,
+                name="Assistant" if role == "assistant" else "You",
+                stamp=datetime.now().strftime("%H:%M"),
+                sent=(role == "user"),
             )
         ui.run_javascript(
             "const el = document.getElementById('transcript-scroll');"
@@ -170,8 +179,8 @@ def main_page() -> None:
     ui.on("lk_status", on_lk_status)
 
     # Initial load
-    refresh_articles()
-    refresh_notes()
+    await refresh_articles()
+    await refresh_notes()
 
     # Timers — scoped to this client connection
     ui.timer(10.0, refresh_notes)
