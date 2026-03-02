@@ -13,7 +13,7 @@ from src.knowledge import raw_store, vector_store
 from .livekit_widget import _AUDIO_WIDGET_HTML, _AUDIO_WIDGET_JS
 from .routes import _transcript
 
-_BUTTON_CSS = """<style>
+_CSS = """
 body { font-size: 16px; }
 #lk-connect, #lk-mute, #lk-disconnect {
   padding: 8px 22px;
@@ -36,7 +36,7 @@ body { font-size: 16px; }
   opacity: 0.35;
   cursor: default;
 }
-</style>"""
+"""
 
 
 @ui.page("/")
@@ -50,13 +50,16 @@ def main_page() -> None:
     # Inject LiveKit JS once per page load — must be called before layout elements.
     ui.add_body_html(_AUDIO_WIDGET_JS)
 
-    # Global style overrides: bigger font + styled audio-widget buttons.
-    ui.add_head_html(_BUTTON_CSS)
+    # Set Quasar theme colors and global CSS overrides.
+    ui.colors(primary="#1976d2", negative="#c62828")
+    ui.add_css(_CSS)
 
     # ── Header ──────────────────────────────────────────────────────────────
+    dark = ui.dark_mode()
     with ui.header(elevated=True).classes("items-center gap-2"):
         ui.button(icon="menu", on_click=lambda: drawer.toggle()).props("flat round dense")
-        ui.label("Newsletter Assistant").classes("text-h6")
+        ui.label("Newsletter Assistant").classes("text-h6 flex-1")
+        ui.switch("Dark").bind_value(dark).props("dense")
 
     # ── Left drawer — articles + search ────────────────────────────────────
     with ui.left_drawer(top_corner=True, bottom_corner=True).props(
