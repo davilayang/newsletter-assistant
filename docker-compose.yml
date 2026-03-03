@@ -1,0 +1,41 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
+      - ./config:/app/config
+      - ./NOTES:/app/NOTES
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
+      - ./config:/app/config
+      - ./NOTES:/app/NOTES
+    restart: unless-stopped
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: docker/pipeline/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
+      - ./config:/app/config
+    # Pipeline is opt-in — run manually:
+    #   docker compose --profile pipeline run --rm pipeline
+    #   docker compose --profile pipeline run --rm pipeline index
+    profiles:
+      - pipeline

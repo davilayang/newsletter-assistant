@@ -24,3 +24,6 @@ NOTES/*
 
 # Environment variables
 .env
+
+# Kubernetes secrets with real values
+k8s/secret.yaml
