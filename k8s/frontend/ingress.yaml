@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: newsletter-frontend
+  namespace: newsletter
+  annotations:
+    # Uncomment and set for your ingress controller + TLS provider:
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    #
+    # k3s (Traefik):
+    # traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    # traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  # tls:
+  #   - hosts:
+  #       - newsletter.yourdomain.com
+  #     secretName: newsletter-tls
+  rules:
+    - host: newsletter.yourdomain.com   # replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: newsletter-frontend
+                port:
+                  number: 80

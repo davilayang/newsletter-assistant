@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: newsletter-data
+  namespace: newsletter
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+
+  # Remove storageClassName to use the cluster default.
+  # For k3s: local-path (default)
+  # For GKE: standard-rwo
+  # For EKS: gp2 / gp3
+  # storageClassName: local-path

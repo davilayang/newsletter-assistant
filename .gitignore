@@ -27,3 +27,4 @@ NOTES/*
 
 # Kubernetes secrets with real values
 k8s/secret.yaml
+k8s/secret.env

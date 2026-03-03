@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newsletter-agent
+  namespace: newsletter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: newsletter-agent
+  template:
+    metadata:
+      labels:
+        app: newsletter-agent
+    spec:
+      containers:
+        - name: agent
+          image: newsletter-agent   # rewritten by kustomization.yaml images[]
+          envFrom:
+            - secretRef:
+                name: newsletter-env
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+              subPath: data
+            - name: data
+              mountPath: /app/creds
+              subPath: creds
+            - name: data
+              mountPath: /app/NOTES
+              subPath: NOTES
+            - name: config
+              mountPath: /app/config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: newsletter-data
+        - name: config
+          configMap:
+            name: newsletter-config   # rewritten to newsletter-config-<hash> by kustomize
+
+      # On multi-node clusters add a nodeSelector so all workloads sharing
+      # the ReadWriteOnce PVC land on the same node:
+      #   kubectl label node <node-name> newsletter=true
+      # nodeSelector:
+      #   newsletter: "true"

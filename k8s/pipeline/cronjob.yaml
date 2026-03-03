@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: newsletter-pipeline
+  namespace: newsletter
+spec:
+  # 07:00 UTC daily — adjust to your timezone.
+  # e.g. for UTC+8 (SGT/CST): "0 23 * * *" runs at 07:00 local time.
+  schedule: "0 7 * * *"
+  # Prevent overlapping runs if the previous job is still scraping.
+  concurrencyPolicy: Forbid
+  # Keep the last 3 successful and 1 failed job for log inspection.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pipeline
+              image: newsletter-pipeline   # rewritten by kustomization.yaml images[]
+              envFrom:
+                - secretRef:
+                    name: newsletter-env
+              volumeMounts:
+                - name: data
+                  mountPath: /app/data
+                  subPath: data
+                - name: data
+                  mountPath: /app/creds
+                  subPath: creds
+                - name: data
+                  mountPath: /app/NOTES
+                  subPath: NOTES
+                - name: config
+                  mountPath: /app/config
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 1Gi
+                limits:
+                  memory: 2Gi
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: newsletter-data
+            - name: config
+              configMap:
+                name: newsletter-config
+
+          # See agent/deployment.yaml for nodeSelector guidance (RWO PVC constraint).
+          # nodeSelector:
+          #   newsletter: "true"
