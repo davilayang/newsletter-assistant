@@ -18,4 +18,5 @@ COPY config/ ./config/
 
 EXPOSE 8080
 
-CMD ["python", "-m", "src.frontend.app"]
+ENTRYPOINT [".venv/bin/python", "-m"]
+CMD ["src.frontend.app"]

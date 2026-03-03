@@ -17,6 +17,7 @@ services:
     build:
       context: .
       dockerfile: docker/agent/Dockerfile
+    command: src.agent.agent dev # Run dev mode
     env_file: .env
     volumes:
       - ./data:/app/data

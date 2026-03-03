@@ -4,6 +4,11 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
 
+# livekit-rtc requires libgobject-2.0 (glib) for its native FFI library
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+  && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies — this layer is cached until pyproject.toml changes.
 # Run `uv lock` locally and commit uv.lock for reproducible builds.
 COPY pyproject.toml ./
@@ -14,4 +19,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY src/ ./src/
 COPY config/ ./config/
 
-CMD ["python", "-m", "src.agent.agent"]
+ENTRYPOINT [".venv/bin/python", "-m"]
+CMD ["src.frontend.agent", "start"]
