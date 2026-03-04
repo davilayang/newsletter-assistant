@@ -12,6 +12,133 @@
 
 ---
 
+## Provision a Hetzner Cloud Server
+
+You should have a default Project on the [Console](https://console.hetzner.com/projects).
+
+
+```bash
+# Install CLI tool
+brew install hcloud
+
+# Get API Key from "Console → Project → Security → API Tokens"
+# $HCLOUD_API_TOKEN
+```
+
+### Server Setup
+
+```bash
+# Authenticate CLI 
+hcloud context create newsletter
+## Paste your API token when prompted
+
+# Upload SSH Key
+SSH_KEY_NAME="my-key"
+hcloud ssh-key create \
+  --name $SSH_KEY_NAME \
+  --public-key-from-file ~/.ssh/id_ed25519.pub
+
+# Create a server
+## 2 CPU, 4GB memory, 80GB storage
+SERVER_NAME="newsletter-k3s"
+hcloud server create --name $SERVER_NAME \
+  --type cpx22 --image ubuntu-24.04 --location "hel1" \
+  --ssh-key $SSH_KEY_NAME
+  
+# Get IP
+hcloud server list
+export SERVER_IP=<ipv4-from-above>
+```
+
+### Make it Secure with Firewall
+
+An additional layer of protection to UFW inside the VM.
+
+```bash
+FIREWALL_NAME="newsletter-fw"
+# Get my current IPv4 address
+MY_IP=$(curl -4 -s ifconfig.me)/32
+
+hcloud firewall create --name $FIREWALL_NAME
+
+# Restricted to my IP only
+hcloud firewall add-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 22 --source-ips ${MY_IP} # SSH
+hcloud firewall add-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 6443 --source-ips ${MY_IP} # k3s API
+
+# Public (frontend ingress)
+hcloud firewall add-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 80 --source-ips 0.0.0.0/0 --source-ips ::/0
+hcloud firewall add-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 443 --source-ips 0.0.0.0/0 --source-ips ::/0
+
+hcloud firewall apply-to-resource $FIREWALL_NAME --type server --server newsletter-k3s
+```
+
+> Ports 8472/udp (flannel VXLAN) and 10250/tcp (kubelet metrics) are opened by UFW inside
+> the VM but intentionally not exposed at the Hetzner firewall level on a single-node setup.
+
+
+```bash
+FIREWALL_NAME="newsletter-fw"
+
+# Remove old IP from rule
+hcloud firewall delete-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 22 --source-ips <old-ip>/32
+# Add new IP to rule
+hcloud firewall add-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 22 --source-ips <new-ip>/32
+```
+
+### Bootstrap the Server
+
+Run `scripts/bootstrap-k3s.sh` on the new server. It will:
+
+- Create a non-root sudo user with your SSH key
+- Harden SSH (disable root login + password auth)
+- Configure UFW (ports 22, 6443, 8472/udp, 10250)
+- Install fail2ban
+- Install k3s (single node) and write a kubeconfig
+
+```bash
+SERVER_IP=... # hclud server list
+DEPLOY_USER=deploy
+PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
+
+# Copy and then run it as root
+scp scripts/bootstrap-k3s.sh root@${SERVER_IP}:/root/bootstrap-k3s.sh
+ssh root@${SERVER_IP} "bash /root/bootstrap-k3s.sh ${DEPLOY_USER} '${PUBKEY}'"
+```
+
+> **Verify** you can SSH as `${DEPLOY_USER}` before closing the root session — the script
+> disables root login on completion.
+
+```bash
+ssh ${DEPLOY_USER}@${SERVER_IP} kubectl get nodes
+```
+
+#### Fetch kubeconfig locally
+
+k3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml` with `127.0.0.1` as the server
+address. Copy it and patch the address:
+
+```bash
+scp ${DEPLOY_USER}@${SERVER_IP}:.kube/config ~/.kube/newsletter-k3s.yaml
+sed -i '' "s|127.0.0.1|${SERVER_IP}|g" ~/.kube/newsletter-k3s.yaml   # macOS
+
+export KUBECONFIG=~/.kube/newsletter-k3s.yaml
+kubectl get nodes    # should show the node as Ready
+```
+
+### Tear down the Server
+
+```bash
+hcloud server delete newsletter-k3s
+```
+
+---
+
 ## First-Time Setup
 
 ### 1. Set your image registry owner
