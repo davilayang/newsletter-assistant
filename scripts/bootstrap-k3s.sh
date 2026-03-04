@@ -2,10 +2,10 @@
 # bootstrap-k3s.sh — Secure an Ubuntu server and install k3s (single node)
 #
 # Usage:
-#   sudo bash bootstrap-k3s.sh <username> <ssh-public-key>
+#   sudo bash bootstrap-k3s.sh <username> <ssh-public-key> <public-ip> <password>
 #
 # Example:
-#   sudo bash bootstrap-k3s.sh deploy "ssh-ed25519 AAAA... user@host"
+#   sudo bash bootstrap-k3s.sh deploy "ssh-ed25519 AAAA... user@host" 89.167.120.123 "MyStr0ngPass!"
 #
 # What this script does:
 #   1. Creates a non-root sudo user with SSH key auth
@@ -18,8 +18,8 @@ set -euo pipefail
 
 # ── Args ──────────────────────────────────────────────────────────────────────
 
-if [[ $# -lt 2 ]]; then
-  echo "Usage: sudo bash $0 <username> <ssh-public-key>"
+if [[ $# -lt 4 ]]; then
+  echo "Usage: sudo bash $0 <username> <ssh-public-key> <public-ip> <password>"
   exit 1
 fi
 
@@ -30,8 +30,10 @@ fi
 
 NEW_USER="$1"
 SSH_PUBKEY="$2"
+PUBLIC_IP="$3"
+USER_PASSWORD="$4"
 
-echo "==> Bootstrapping server: user=${NEW_USER}"
+echo "==> Bootstrapping server: user=${NEW_USER}, ip=${PUBLIC_IP}"
 
 # ── 1. System update ──────────────────────────────────────────────────────────
 
@@ -50,6 +52,10 @@ else
   usermod -aG sudo "${NEW_USER}"
   echo "    Added ${NEW_USER} to sudo group."
 fi
+
+# Set user password (required for sudo)
+echo "${NEW_USER}:${USER_PASSWORD}" | chpasswd
+echo "    Password set for ${NEW_USER}."
 
 # Install SSH public key
 SSH_DIR="/home/${NEW_USER}/.ssh"
@@ -135,6 +141,7 @@ echo "    fail2ban configured (max 5 retries / 10 min, 1h ban)."
 
 echo "==> Installing k3s (single node)..."
 curl -sfL https://get.k3s.io | sh -s - \
+  --tls-san "${PUBLIC_IP}" \
   --write-kubeconfig-mode 644
 
 # Wait for node to be ready

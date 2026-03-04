@@ -16,7 +16,6 @@
 
 You should have a default Project on the [Console](https://console.hetzner.com/projects).
 
-
 ```bash
 # Install CLI tool
 brew install hcloud
@@ -102,21 +101,22 @@ Run `scripts/bootstrap-k3s.sh` on the new server. It will:
 - Harden SSH (disable root login + password auth)
 - Configure UFW (ports 22, 6443, 8472/udp, 10250)
 - Install fail2ban
-- Install k3s (single node) and write a kubeconfig
+- Install k3s (single node) with `--tls-san` for remote `kubectl` access
+- Write a kubeconfig
 
 ```bash
 SERVER_IP=... # hclud server list
 SSH_KEY_FILE=...
 SSH_PUB_KEY_FILE=...
 DEPLOY_USER=deploy
-PUBKEY=$(cat $SSH_PUB_KEY_FILE)
+DEPLOY_PASSWORD=...  # sudo password for the deploy user
 
 # Copy and then run it as root
 scp -i $SSH_KEY_FILE \
   scripts/bootstrap-k3s.sh root@${SERVER_IP}:/root/bootstrap-k3s.sh
 ssh -i $SSH_KEY_FILE \
   root@${SERVER_IP} \
-  "bash /root/bootstrap-k3s.sh ${DEPLOY_USER} '$(cat $SSH_PUB_KEY_FILE)'"
+  "bash /root/bootstrap-k3s.sh ${DEPLOY_USER} '$(cat $SSH_PUB_KEY_FILE)' ${SERVER_IP} '${DEPLOY_PASSWORD}'"
 ```
 
 > **Verify** you can SSH as `${DEPLOY_USER}` before closing the root session — the script
@@ -127,17 +127,23 @@ ssh -i $SSH_KEY_FILE \
   ${DEPLOY_USER}@${SERVER_IP} kubectl get nodes
 ```
 
-#### Fetch kubeconfig locally
+### Fetch kubeconfig locally
 
 k3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml` with `127.0.0.1` as the server
 address. Copy it and patch the address:
 
 ```bash
-scp ${DEPLOY_USER}@${SERVER_IP}:.kube/config ~/.kube/newsletter-k3s.yaml
-sed -i '' "s|127.0.0.1|${SERVER_IP}|g" ~/.kube/newsletter-k3s.yaml   # macOS
+K3S_YAML=/etc/rancher/k3s/k3s.yaml
 
-export KUBECONFIG=~/.kube/newsletter-k3s.yaml
-kubectl get nodes    # should show the node as Ready
+# Get Kubeconfig to Local
+scp -i $SSH_KEY_FILE \
+  ${DEPLOY_USER}@${SERVER_IP}:$K3S_YAML ~/.kube/newsletter-k3s.yaml
+
+# Replace 127.0.0.1 with the Server IP
+sed -i '' "s|127.0.0.1|${SERVER_IP}|" ~/.kube/newsletter-k3s.yaml
+
+# Verify connectivity
+kubectl --kubeconfig ~/.kube/newsletter-k3s.yaml get nodes
 ```
 
 ### Tear down the Server
