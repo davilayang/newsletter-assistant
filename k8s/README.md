@@ -34,9 +34,9 @@ hcloud context create newsletter
 
 # Upload SSH Key
 SSH_KEY_NAME="my-key"
+SSH_PUB_KEY_FILE="~/.ssh/..."
 hcloud ssh-key create \
-  --name $SSH_KEY_NAME \
-  --public-key-from-file ~/.ssh/id_ed25519.pub
+  --name $SSH_KEY_NAME --public-key-from-file $SSH_PUB_KEY_FILE
 
 # Create a server
 ## 2 CPU, 4GB memory, 80GB storage
@@ -55,6 +55,7 @@ export SERVER_IP=<ipv4-from-above>
 An additional layer of protection to UFW inside the VM.
 
 ```bash
+SERVER_NAME="newsletter-k3s"
 FIREWALL_NAME="newsletter-fw"
 # Get my current IPv4 address
 MY_IP=$(curl -4 -s ifconfig.me)/32
@@ -73,7 +74,7 @@ hcloud firewall add-rule $FIREWALL_NAME \
 hcloud firewall add-rule $FIREWALL_NAME \
   --direction in --protocol tcp --port 443 --source-ips 0.0.0.0/0 --source-ips ::/0
 
-hcloud firewall apply-to-resource $FIREWALL_NAME --type server --server newsletter-k3s
+hcloud firewall apply-to-resource $FIREWALL_NAME --type server --server $SERVER_NAME
 ```
 
 > Ports 8472/udp (flannel VXLAN) and 10250/tcp (kubelet metrics) are opened by UFW inside
@@ -82,13 +83,15 @@ hcloud firewall apply-to-resource $FIREWALL_NAME --type server --server newslett
 
 ```bash
 FIREWALL_NAME="newsletter-fw"
+OLD_IP=...
+NEW_IP=...
 
 # Remove old IP from rule
 hcloud firewall delete-rule $FIREWALL_NAME \
-  --direction in --protocol tcp --port 22 --source-ips <old-ip>/32
+  --direction in --protocol tcp --port 22 --source-ips $OLD_IP/32
 # Add new IP to rule
 hcloud firewall add-rule $FIREWALL_NAME \
-  --direction in --protocol tcp --port 22 --source-ips <new-ip>/32
+  --direction in --protocol tcp --port 22 --source-ips $NEW_IP/32
 ```
 
 ### Bootstrap the Server
@@ -103,20 +106,25 @@ Run `scripts/bootstrap-k3s.sh` on the new server. It will:
 
 ```bash
 SERVER_IP=... # hclud server list
-KEYFILE=...
+SSH_KEY_FILE=...
+SSH_PUB_KEY_FILE=...
 DEPLOY_USER=deploy
-PUBKEY=$(cat $KEYFILE)
+PUBKEY=$(cat $SSH_PUB_KEY_FILE)
 
 # Copy and then run it as root
-scp scripts/bootstrap-k3s.sh root@${SERVER_IP}:/root/bootstrap-k3s.sh
-ssh root@${SERVER_IP} "bash /root/bootstrap-k3s.sh ${DEPLOY_USER} '${PUBKEY}'"
+scp -i $SSH_KEY_FILE \
+  scripts/bootstrap-k3s.sh root@${SERVER_IP}:/root/bootstrap-k3s.sh
+ssh -i $SSH_KEY_FILE \
+  root@${SERVER_IP} \
+  "bash /root/bootstrap-k3s.sh ${DEPLOY_USER} '$(cat $SSH_PUB_KEY_FILE)'"
 ```
 
 > **Verify** you can SSH as `${DEPLOY_USER}` before closing the root session — the script
 > disables root login on completion.
 
 ```bash
-ssh ${DEPLOY_USER}@${SERVER_IP} kubectl get nodes
+ssh -i $SSH_KEY_FILE \
+  ${DEPLOY_USER}@${SERVER_IP} kubectl get nodes
 ```
 
 #### Fetch kubeconfig locally
