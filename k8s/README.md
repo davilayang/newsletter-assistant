@@ -103,8 +103,9 @@ Run `scripts/bootstrap-k3s.sh` on the new server. It will:
 
 ```bash
 SERVER_IP=... # hclud server list
+KEYFILE=...
 DEPLOY_USER=deploy
-PUBKEY=$(cat ~/.ssh/id_ed25519.pub)
+PUBKEY=$(cat $KEYFILE)
 
 # Copy and then run it as root
 scp scripts/bootstrap-k3s.sh root@${SERVER_IP}:/root/bootstrap-k3s.sh
