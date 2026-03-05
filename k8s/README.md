@@ -308,7 +308,7 @@ kubectl create job --from=cronjob/newsletter-pipeline pipeline-manual -n newslet
 Edit `config/newsletters.yaml` locally, then re-apply. Kustomize regenerates the ConfigMap and rolls the pods automatically:
 
 ```bash
-kubectl apply -k k8s/
+kubectl kustomize k8s/ | sed "s|docker.io/OWNER|docker.io/$DOCKER_USER|g" | kubectl apply -f -
 ```
 
 ### Update secrets
@@ -316,7 +316,7 @@ kubectl apply -k k8s/
 Edit `k8s/secret.env`, then re-apply:
 
 ```bash
-kubectl apply -k k8s/
+kubectl kustomize k8s/ | sed "s|docker.io/OWNER|docker.io/$DOCKER_USER|g" | kubectl apply -f -
 kubectl rollout restart deploy/newsletter-agent deploy/newsletter-frontend -n newsletter
 ```
 
@@ -345,7 +345,7 @@ nodeSelector:
 
 ```
 k8s/
-  kustomization.yaml        # entry point — run: kubectl apply -k k8s/
+  kustomization.yaml        # entry point — pipe through sed to substitute OWNER
   namespace.yaml
   pvc.yaml                  # 3 Gi ReadWriteOnce volume (data + creds + NOTES)
   secret.env.template       # copy to secret.env and fill in values
