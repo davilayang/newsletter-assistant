@@ -1,13 +1,10 @@
 # Kubernetes Deployment
 
-> **TODO:** Integrate image builds with CI/CD (e.g. GitHub Actions) to automatically
-> build and push `newsletter-agent`, `newsletter-pipeline`, and `newsletter-frontend`
-> to `ghcr.io` on push to `main`, then trigger a rollout via `kubectl apply -k k8s/`.
-
 ## Prerequisites
 
 - `kubectl` connected to your cluster
-- Docker images built and pushed to `ghcr.io` (see [CI/CD](#cicd))
+- Docker Desktop installed locally (for building images)
+- A [Docker Hub](https://hub.docker.com/) account
 - A domain name pointed at your cluster's ingress IP (for the frontend)
 
 ---
@@ -27,7 +24,7 @@ brew install hcloud
 ### Server Setup
 
 ```bash
-# Authenticate CLI 
+# Authenticate CLI
 hcloud context create newsletter
 ## Paste your API token when prompted
 
@@ -43,7 +40,7 @@ SERVER_NAME="newsletter-k3s"
 hcloud server create --name $SERVER_NAME \
   --type cpx22 --image ubuntu-24.04 --location "hel1" \
   --ssh-key $SSH_KEY_NAME
-  
+
 # Get IP
 hcloud server list
 export SERVER_IP=<ipv4-from-above>
@@ -160,17 +157,66 @@ hcloud server delete newsletter-k3s
 
 ---
 
-## First-Time Setup
+## Build & Push Images to Docker Hub
 
-### 1. Set your image registry owner
+Images are built locally and pushed to Docker Hub. You can use either public or private repositories.
 
-Edit `k8s/kustomization.yaml` and replace `OWNER` with your GitHub username in the `images` section:
+### Login to Docker Hub
+
+```bash
+docker login
+# Enter your Docker Hub username and password/access token
+```
+
+### Build and push all images
+
+The `docker-compose.yml` already defines the build contexts. Just set `DOCKER_USER` and use compose:
+
+```bash
+export DOCKER_USER=your-dockerhub-username
+
+# Build all images
+docker compose build
+
+# Push all images
+docker compose push
+
+# Or build + push the pipeline (behind a profile)
+docker compose --profile pipeline build
+docker compose --profile pipeline push
+```
+
+### Using Private Docker Hub Repositories
+
+You can make the Docker Hub repositories private (Settings → Make Private on each repo page).
+K3s needs a registry secret to pull private images:
+
+```bash
+# Create the pull secret
+kubectl create secret docker-registry dockerhub-creds \
+  --docker-server=https://index.docker.io/v1/ \
+  --docker-username=your-dockerhub-username \
+  --docker-password=your-dockerhub-access-token \
+  -n newsletter
+```
+
+Then add `imagePullSecrets` to each workload. In `agent/deployment.yaml`, `frontend/deployment.yaml`, and `pipeline/cronjob.yaml`, add under `spec.template.spec`:
 
 ```yaml
-images:
-  - name: newsletter-agent
-    newName: ghcr.io/your-username/newsletter-agent
-  ...
+imagePullSecrets:
+  - name: dockerhub-creds
+```
+
+---
+
+## First-Time Setup
+
+### 1. Set your Docker Hub username
+
+Export `DOCKER_USER` — this is used at deploy time to substitute `OWNER` in `k8s/kustomization.yaml` without modifying the committed file:
+
+```bash
+export DOCKER_USER=your-dockerhub-username
 ```
 
 ### 2. Create the secrets file
@@ -188,10 +234,10 @@ Edit `k8s/frontend/ingress.yaml` and replace `newsletter.yourdomain.com` with yo
 ### 4. Deploy
 
 ```bash
-kubectl apply -k k8s/
+kubectl kustomize k8s/ | sed "s|docker.io/OWNER|docker.io/$DOCKER_USER|g" | kubectl apply -f -
 ```
 
-This creates the namespace, PVC, ConfigMap, Secret, and all workloads in one command.
+This creates the namespace, PVC, ConfigMap, Secret, and all workloads in one command. The `OWNER` placeholder in `kustomization.yaml` stays committed as-is.
 
 ### 5. Bootstrap credentials onto the PVC
 
@@ -215,6 +261,20 @@ kubectl cp creds/ newsletter/bootstrap:/mnt/creds/
 
 ## Day-to-Day Operations
 
+### Rebuild and redeploy images
+
+```bash
+export DOCKER_USER=your-dockerhub-username
+
+# Rebuild all, push, then restart
+docker compose build && docker compose push
+kubectl rollout restart deploy/newsletter-agent deploy/newsletter-frontend -n newsletter
+
+# Or rebuild a single service
+docker compose build agent && docker compose push agent
+kubectl rollout restart deploy/newsletter-agent -n newsletter
+```
+
 ### Check pod status
 
 ```bash
@@ -226,7 +286,6 @@ kubectl get pods -n newsletter
 ```bash
 kubectl logs -n newsletter deploy/newsletter-agent   -f
 kubectl logs -n newsletter deploy/newsletter-frontend -f
-kubectl logs -n newsletter -l job-name=newsletter-pipeline --tail=100
 ```
 
 ### Scale agent up / down

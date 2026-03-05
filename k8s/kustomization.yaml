@@ -27,16 +27,16 @@ secretGenerator:
     envs:
       - secret.env
 
-# Image overrides — replace OWNER with your GitHub username.
+# Image overrides — replace OWNER with your Docker Hub username.
 # These names are referenced in the Deployment/CronJob manifests;
 # Kustomize rewrites them to the full registry path on apply.
 images:
   - name: newsletter-agent
-    newName: ghcr.io/OWNER/newsletter-agent
+    newName: docker.io/OWNER/newsletter-agent
     newTag: latest
   - name: newsletter-pipeline
-    newName: ghcr.io/OWNER/newsletter-pipeline
+    newName: docker.io/OWNER/newsletter-pipeline
     newTag: latest
   - name: newsletter-frontend
-    newName: ghcr.io/OWNER/newsletter-frontend
+    newName: docker.io/OWNER/newsletter-frontend
     newTag: latest
