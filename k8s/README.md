@@ -133,6 +133,9 @@ k3s writes the kubeconfig to `/etc/rancher/k3s/k3s.yaml` with `127.0.0.1` as the
 address. Copy it and patch the address:
 
 ```bash
+DEPLOY_USER=...
+SERVER_IP=...
+SSH_KEY_FILE=...
 K3S_YAML=/etc/rancher/k3s/k3s.yaml
 
 # Get Kubeconfig to Local
@@ -144,6 +147,9 @@ sed -i '' "s|127.0.0.1|${SERVER_IP}|" ~/.kube/newsletter-k3s.yaml
 
 # Verify connectivity
 kubectl --kubeconfig ~/.kube/newsletter-k3s.yaml get nodes
+# Set alias
+alias kh="kubectl --kubeconfig ~/.kube/newsletter-k3s.yaml"
+kh get pods -A
 ```
 
 ### Tear down the Server
