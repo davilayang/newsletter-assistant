@@ -28,10 +28,13 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black==23.7.0",
-    "ipython>=8.0.0,<9.0.0",
-    "mypy>=1.1.1,<2.0.0",
+    "ipython",
+    "jupyterlab",
+    "jupyterlab-vim",
+    "pandas",
     "poethepoet>=0.29.0,<1.0.0",
+    "black==23.7.0",
+    "mypy>=1.1.1,<2.0.0",
     "pydantic-settings>=2.0.3,<3.0.0",
     "pydantic>=2.4.2,<3.0.0",
     "pytest==7.4.2",
