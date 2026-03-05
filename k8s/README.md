@@ -93,7 +93,7 @@ hcloud firewall add-rule $FIREWALL_NAME \
   --direction in --protocol tcp --port 22 --source-ips $NEW_IP/32
 ```
 
-### Bootstrap the Server
+## Bootstrap the Server with K3S
 
 Run `scripts/bootstrap-k3s.sh` on the new server. It will:
 
