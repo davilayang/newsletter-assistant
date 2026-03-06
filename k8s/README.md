@@ -10,10 +10,12 @@ This guide covers deploying the newsletter assistant to a single-node k3s cluste
 
 ## Prerequisites
 
+- `docker` installed locally
 - `kubectl` installed locally
-- Docker Desktop installed (for building images)
+- `hcloud` installed locally (Hetzner Cloud CLI)
+  - Run `brew install hcloud` on MacOs
+- A [Hetzner Project](https://console.hetzner.com/) 
 - A [Docker Hub](https://hub.docker.com/) account
-- `brew install hcloud` (Hetzner Cloud CLI)
 
 ## Directory Structure
 
@@ -39,7 +41,8 @@ k8s/
 ## Provision a Hetzner Cloud Server
 
 You should have a default Project on the [Console](https://console.hetzner.com/projects).
-Get an API key from **Console → Project → Security → API Tokens**.
+
+> Get an API key from _Console → Project → Security → API Tokens_
 
 ### Server Setup
 
@@ -99,17 +102,26 @@ hcloud firewall apply-to-resource $FIREWALL_NAME --type server --server $SERVER_
 > the VM but intentionally not exposed at the Hetzner firewall level on a single-node setup.
 
 
+### Update Firewall After IP Change
+
+If your local IP changes, update the SSH and k3s API firewall rules:
+
 ```bash
 FIREWALL_NAME="newsletter-fw"
 OLD_IP=...
 NEW_IP=$(curl -4 -s ifconfig.me)/32 # Current IP address
 
-# Remove old IP from rule
+# Update SSH rule
 hcloud firewall delete-rule $FIREWALL_NAME \
   --direction in --protocol tcp --port 22 --source-ips $OLD_IP/32
-# Add new IP to rule
 hcloud firewall add-rule $FIREWALL_NAME \
   --direction in --protocol tcp --port 22 --source-ips $NEW_IP/32
+
+# Update k3s API rule
+hcloud firewall delete-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 6443 --source-ips $OLD_IP/32
+hcloud firewall add-rule $FIREWALL_NAME \
+  --direction in --protocol tcp --port 6443 --source-ips $NEW_IP/32
 ```
 
 ## Bootstrap the Server with K3S
@@ -167,12 +179,6 @@ alias kh="kubectl --kubeconfig ~/.kube/newsletter-k3s.yaml"
 kh get pods -A
 ```
 
-### Tear down the Server
-
-```bash
-hcloud server delete newsletter-k3s
-```
-
 ---
 
 ## Build & Push Images to Docker Hub
@@ -204,23 +210,6 @@ docker compose --profile pipeline build
 docker compose --profile pipeline push
 ```
 
-### Using Private Docker Hub Repositories
-
-Add secret to access your Docker registry
-
-```bash
-# Create the pull secret
-DOCKER_USER=..
-DOCKER_TOKEN=...
-kh create secret docker-registry dockerhub-creds \
-  --docker-server=https://index.docker.io/v1/ \
-  --docker-username=$DOCKER_USER \
-  --docker-password=$DOCKER_TOKEN \
-  -n newsletter
-```
-
-The secret "dockerhub-creds" is then referenced in `deployment.yaml` files when pulling the images.
-
 ---
 
 ## Initial Application Setup on K8S
@@ -236,6 +225,22 @@ kh apply -f $CERT_MGR_YAML
 # Wait for cert-manager pods to be ready
 kh wait --for=condition=Ready pods --all -n cert-manager --timeout=90s
 ```
+
+### Create Docker Hub Pull Secret
+
+Required for pulling private images from Docker Hub:
+
+```bash
+DOCKER_USER=...
+DOCKER_TOKEN=...
+kh create secret docker-registry dockerhub-creds \
+  --docker-server=https://index.docker.io/v1/ \
+  --docker-username=$DOCKER_USER \
+  --docker-password=$DOCKER_TOKEN \
+  -n newsletter
+```
+
+The secret `dockerhub-creds` is referenced via `imagePullSecrets` in all deployment manifests.
 
 ### Setup secrets file
 
@@ -364,4 +369,8 @@ nodeSelector:
   newsletter: "true"
 ```
 
----
+### Tear Down the Server
+
+```bash
+hcloud server delete newsletter-k3s
+```
