@@ -286,7 +286,7 @@ kh run bootstrap --image=busybox --rm -it \
   }' -n newsletter
 
 # In a separate terminal while the pod is running:
-kubectl --kubeconfig ~/.kube/newsletter-k3s.yaml cp creds/ "newsletter/bootstrap":/mnt/creds/
+kubectl --kubeconfig ~/.kube/newsletter-k3s.yaml cp creds "newsletter/bootstrap":/mnt/
 
 # Then Ctrl-C to terminate the pod
 ```
