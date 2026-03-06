@@ -33,10 +33,10 @@ _NEWSLETTER_NAMES = ", ".join(f'"{k}"' for k in _NEWSLETTERS)
 def _parse_articles(html: str) -> list[dict[str, str]]:
     """Extract article cards from a Medium newsletter HTML body.
 
-    Delegates to medium.parse_newsletter_email and converts Article dataclasses
+    Delegates to medium.parse_medium_newsletter and converts Article dataclasses
     to the {title, url} dicts expected by get_todays_newsletter.
     """
-    articles = medium.parse_newsletter_email(html)
+    articles = medium.parse_medium_newsletter(html)
     return [{"title": a.title, "url": a.url} for a in articles]
 
 

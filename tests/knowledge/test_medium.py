@@ -5,7 +5,7 @@ from src.knowledge.medium import (
     Article,
     _is_valid_content,
     check_auth_state,
-    parse_newsletter_email,
+    parse_medium_newsletter,
 )
 
 # ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ _SAMPLE_HTML = """
 
 
 def test_parse_extracts_medium_articles() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     urls = [a.url for a in articles]
     assert (
         "https://medium.com/towards-data-science/build-a-rag-pipeline-abc12345" in urls
@@ -74,7 +74,7 @@ def test_parse_extracts_medium_articles() -> None:
 
 
 def test_parse_deduplicates_tracking_params() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     urls = [a.url for a in articles]
     # The duplicate with ?source=email should be stripped and deduplicated
     assert (
@@ -86,25 +86,25 @@ def test_parse_deduplicates_tracking_params() -> None:
 
 
 def test_parse_skips_signin_links() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     urls = [a.url for a in articles]
     assert not any("/m/signin" in u for u in urls)
 
 
 def test_parse_skips_profile_pages() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     urls = [a.url for a in articles]
     assert "https://medium.com/@davilayang" not in urls
 
 
 def test_parse_skips_bare_domain() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     urls = [a.url for a in articles]
     assert "https://medium.com" not in urls
 
 
 def test_parse_skips_non_medium_domains() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     urls = [a.url for a in articles]
     assert "https://example.com/not-medium" not in urls
 
@@ -116,19 +116,19 @@ def test_parse_skips_medium_internal_pages() -> None:
       <a href="https://medium.com/some-real-article-abc12345def"><h2>Real</h2></a>
     </body></html>
     """
-    articles = parse_newsletter_email(html)
+    articles = parse_medium_newsletter(html)
     urls = [a.url for a in articles]
     assert "https://medium.com/jobs-at-medium/work-at-medium-959d1a85284e" not in urls
     assert "https://medium.com/some-real-article-abc12345def" in urls
 
 
 def test_parse_empty_html() -> None:
-    assert parse_newsletter_email("") == []
-    assert parse_newsletter_email("<html><body></body></html>") == []
+    assert parse_medium_newsletter("") == []
+    assert parse_medium_newsletter("<html><body></body></html>") == []
 
 
 def test_parse_returns_article_dataclass() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     assert all(isinstance(a, Article) for a in articles)
     assert all(isinstance(a.title, str) for a in articles)
 
@@ -144,7 +144,7 @@ def test_parse_warns_when_too_few_articles(caplog) -> None:
     </body></html>
     """
     with caplog.at_level(logging.WARNING, logger="src.knowledge.medium"):
-        parse_newsletter_email(html)
+        parse_medium_newsletter(html)
     assert any("expected" in r.message for r in caplog.records)
 
 
@@ -166,20 +166,20 @@ def test_parse_extracts_author_from_card() -> None:
       </div>
     </body></html>
     """
-    articles = parse_newsletter_email(html)
+    articles = parse_medium_newsletter(html)
     assert len(articles) == 1
     assert articles[0].author == "John Doe"
     assert articles[0].title == "My Great Article"
 
 
 def test_parse_extracts_h2_title() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     titles = [a.title for a in articles]
     assert "How to Build a RAG Pipeline" in titles
 
 
 def test_parse_extracts_h3_snippet() -> None:
-    articles = parse_newsletter_email(_SAMPLE_HTML)
+    articles = parse_medium_newsletter(_SAMPLE_HTML)
     rag_article = next(a for a in articles if "build-a-rag-pipeline" in a.url)
     assert "retrieval-augmented generation" in rag_article.snippet
 
@@ -191,7 +191,7 @@ def test_parse_caps_at_20() -> None:
         for i in range(1, 26)
     )
     html = f"<html><body>{links}</body></html>"
-    articles = parse_newsletter_email(html)
+    articles = parse_medium_newsletter(html)
     assert len(articles) <= 20
 
 

@@ -76,7 +76,7 @@ class Article:
     tags: list[str] = field(default_factory=list)
 
 
-def parse_newsletter_email(html_body: str) -> list[Article]:
+def parse_medium_newsletter(html_body: str) -> list[Article]:
     """Extract article cards from a Medium newsletter HTML body.
 
     Article URLs are identified by the hex article ID suffix (-[a-f0-9]{8,12}),

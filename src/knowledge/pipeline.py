@@ -86,7 +86,7 @@ def run(newsletter_date: date | None = None) -> None:
                 raw_store.mark_processed(message_id)
                 continue
 
-            articles = medium.parse_newsletter_email(html)
+            articles = medium.parse_medium_newsletter(html)
             logger.info(
                 "    Parsed %d article(s) from message %s.", len(articles), message_id
             )
