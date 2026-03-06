@@ -1,6 +1,7 @@
 FINDINGS/
 creds
 .zed
+*.ipynb
 .ipynb_checkpoints
 
 # Python-generated files
