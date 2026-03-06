@@ -55,7 +55,7 @@ def _resolve_newsletter(name: str) -> dict | None:
 async def get_todays_newsletter(
     context: RunContext,
     newsletter: str = "medium",
-    recency: str = "2d",
+    recency: str = "1d",
 ) -> str:
     """Fetch newsletter emails from Gmail.
 
@@ -70,8 +70,8 @@ async def get_todays_newsletter(
         newsletter: Which newsletter to load. One of: "medium" (default),
             "boring cash cow", "the batch", "north london".
         recency: Limit results to emails newer than this. Uses Gmail's
-            newer_than: operator (e.g. "1d", "7d", "2m"). Default is "2d".
-            Pass an empty string to fetch all emails regardless of age.
+            `newer_than:` operator (e.g. "1d", "7d", "2m"). Default is "1d", i.e.
+            latest in last 24 hours. Pass '' to fetch all emails regardless of age.
     """
     cfg = _resolve_newsletter(newsletter)
     if cfg is None:
