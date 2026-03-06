@@ -1,0 +1,27 @@
+# Pi-specific Docker Compose override for 2 GB Raspberry Pi.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.pi.yml up -d
+#
+# Changes from base:
+#   - Drops pipeline service
+#   - Adds memory limits (256 MB frontend, 512 MB agent)
+#   - Switches agent to production mode
+
+services:
+  frontend:
+    ports:
+      - "0.0.0.0:8080:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  agent:
+    command: src.agent.agent start
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  pipeline:
+    deploy:
+      replicas: 0
