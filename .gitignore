@@ -1,5 +1,6 @@
 FINDINGS/
 creds
+*.pem
 .zed
 *.ipynb
 .ipynb_checkpoints

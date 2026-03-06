@@ -27,6 +27,48 @@ const { Room, RoomEvent, Track, createLocalAudioTrack } = LivekitClient;
 
 let _room = null;
 let _micTrack = null;
+let _wakeLock = null;
+let _silentAudio = null;
+
+async function _acquireWakeLock() {
+  // Try Wake Lock API first
+  if ('wakeLock' in navigator) {
+    try {
+      _wakeLock = await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+      console.log('Wake Lock acquired');
+      return;
+    } catch (e) {
+      console.warn('Wake Lock request failed:', e.message);
+    }
+  }
+  // Fallback: silent audio loop to prevent tab suspension
+  if (!_silentAudio) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+    gain.gain.value = 0.001;          // effectively silent
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+    oscillator.start();
+    _silentAudio = { ctx, oscillator };
+    console.log('Wake Lock fallback: silent audio started');
+  }
+}
+
+function _releaseWakeLock() {
+  if (_wakeLock) {
+    _wakeLock.release();
+    _wakeLock = null;
+    console.log('Wake Lock released');
+  }
+  if (_silentAudio) {
+    _silentAudio.oscillator.stop();
+    _silentAudio.ctx.close();
+    _silentAudio = null;
+    console.log('Wake Lock fallback: silent audio stopped');
+  }
+}
 
 function lkSetStatus(msg) {
   document.getElementById('lk-status').textContent = msg;
@@ -68,6 +110,7 @@ async function lkConnect() {
     });
 
     _room.on(RoomEvent.Disconnected, () => {
+      _releaseWakeLock();
       lkSetStatus('Disconnected');
       lkSetButtons(false);
       emitEvent('lk_status', { connected: false });
@@ -79,6 +122,7 @@ async function lkConnect() {
     _micTrack = await createLocalAudioTrack();
     await _room.localParticipant.publishTrack(_micTrack);
 
+    await _acquireWakeLock();
     lkSetStatus('Connected \u2014 mic active');
     lkSetButtons(true);
     emitEvent('lk_status', { connected: true });
@@ -102,6 +146,7 @@ async function lkToggleMute() {
 }
 
 async function lkDisconnect() {
+  _releaseWakeLock();
   if (_room) await _room.disconnect();
 }
 

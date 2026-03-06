@@ -79,6 +79,45 @@ Example session:
 
 Notes are saved to `NOTES/<today's date>_medium-notes.md`.
 
+### Web UI
+
+```bash
+uv run poe frontend
+```
+
+Opens at `http://127.0.0.1:8080`. The UI provides a voice session widget, article sidebar, and transcript view.
+
+#### Mobile testing over local network (HTTPS)
+
+Mobile browsers require HTTPS for microphone access. Use [`mkcert`](https://github.com/FiloSottile/mkcert) to create locally-trusted certificates:
+
+```bash
+# Install mkcert (one-time)
+brew install mkcert
+mkcert -install
+
+# Generate certs for your local IP (find it with: ipconfig getifaddr en0)
+mkcert 192.168.1.38 localhost 127.0.0.1
+```
+
+Then run the frontend with SSL:
+
+```bash
+APP_HOST=0.0.0.0 \
+SSL_CERTFILE=./192.168.1.38+2.pem \
+SSL_KEYFILE=./192.168.1.38+2-key.pem \
+uv run poe frontend
+```
+
+On your phone, install the mkcert root CA so the certificate is trusted:
+
+1. Run `mkcert -CAROOT` to find the CA directory
+2. Transfer `rootCA.pem` to your phone (AirDrop, email, etc.)
+3. Install it: **Settings → General → VPN & Device Management → Install**
+4. Open `https://<your-mac-ip>:8080` in your mobile browser
+
+The frontend includes Wake Lock support to keep the screen on during voice sessions, preventing WebSocket disconnection on mobile.
+
 ### Scraping pipeline
 
 The pipeline reads unread Medium newsletter emails from Gmail, fetches full article content via a headless Firefox browser (camoufox), and stores everything in SQLite + ChromaDB for later search.
