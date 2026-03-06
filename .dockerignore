@@ -1,0 +1,30 @@
+# Python
+.venv/
+__pycache__/
+*.py[oc]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Runtime data (bind-mounted at run time)
+data/
+creds/
+NOTES/
+logs/
+
+# Secrets
+.env
+
+# Dev / repo artefacts
+.git/
+tests/
+PLAN/
+FINDINGS/
+*.md
+!config/
+
+# Build artefacts
+dist/
+build/
+wheels/
+*.egg-info/

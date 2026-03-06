@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: newsletter-frontend
+  namespace: newsletter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: newsletter-frontend
+  template:
+    metadata:
+      labels:
+        app: newsletter-frontend
+    spec:
+      imagePullSecrets:
+        - name: dockerhub-creds
+      containers:
+        - name: frontend
+          image: newsletter-frontend   # rewritten by kustomization.yaml images[]
+          ports:
+            - containerPort: 8080
+          env:
+            - name: APP_HOST
+              value: "0.0.0.0"
+          envFrom:
+            - secretRef:
+                name: newsletter-env
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+              subPath: data
+            - name: data
+              mountPath: /app/creds
+              subPath: creds
+            - name: data
+              mountPath: /app/NOTES
+              subPath: NOTES
+            - name: config
+              mountPath: /app/config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: newsletter-data
+        - name: config
+          configMap:
+            name: newsletter-config
+
+      # See agent/deployment.yaml for nodeSelector guidance (RWO PVC constraint).
+      # nodeSelector:
+      #   newsletter: "true"

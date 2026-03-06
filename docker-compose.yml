@@ -1,0 +1,48 @@
+services:
+  frontend:
+    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-frontend:latest
+    platform: ${PLATFORM:-}
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
+      - ./config:/app/config
+      - ./NOTES:/app/NOTES
+    restart: unless-stopped
+
+  agent:
+    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-agent:latest
+    platform: ${PLATFORM:-}
+    build:
+      context: .
+      dockerfile: docker/agent/Dockerfile
+    command: src.agent.agent dev # Run dev mode
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
+      - ./config:/app/config
+      - ./NOTES:/app/NOTES
+    restart: unless-stopped
+
+  pipeline:
+    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-pipeline:latest
+    platform: ${PLATFORM:-}
+    build:
+      context: .
+      dockerfile: docker/pipeline/Dockerfile
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./creds:/app/creds
+      - ./config:/app/config
+    # Pipeline is opt-in — run manually:
+    #   docker compose --profile pipeline run --rm pipeline
+    #   docker compose --profile pipeline run --rm pipeline index
+    profiles:
+      - pipeline

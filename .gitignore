@@ -1,5 +1,8 @@
+FINDINGS/
 creds
 .zed
+*.ipynb
+.ipynb_checkpoints
 
 # Python-generated files
 .mypy_cache
@@ -24,3 +27,7 @@ NOTES/*
 
 # Environment variables
 .env
+
+# Kubernetes secrets with real values
+k8s/secret.yaml
+k8s/secret.env
