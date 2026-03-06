@@ -2,18 +2,16 @@
 # Function tool definitions for the NewsletterAssistant agent.
 
 import asyncio
-import re
 
 from pathlib import Path
 
 import yaml
 
-from bs4 import BeautifulSoup
 from livekit.agents import RunContext, ToolError, function_tool
 
 from src.core.gmail import ops as gmail_ops
 from src.core.notes import save_note as _save_note
-from src.knowledge import fetcher, raw_store, vector_store
+from src.knowledge import fetcher, medium, raw_store, vector_store
 
 # Truncate fetched article content to this length before passing to the LLM,
 # to keep context usage predictable.
@@ -31,52 +29,15 @@ def _load_newsletters() -> dict[str, dict]:
 _NEWSLETTERS: dict[str, dict] = _load_newsletters()
 _NEWSLETTER_NAMES = ", ".join(f'"{k}"' for k in _NEWSLETTERS)
 
-# Matches Medium article URLs by hex ID suffix — same pattern as medium.py.
-_ARTICLE_URL_RE = re.compile(
-    r"^https?://(?:medium\.com|towardsdatascience\.com|betterprogramming\.pub"
-    r"|levelup\.gitconnected\.com|pub\.towardsai\.net)"
-    r"/\S+-[a-f0-9]{8,12}$"
-)
-
 
 def _parse_articles(html: str) -> list[dict[str, str]]:
     """Extract article cards from a Medium newsletter HTML body.
 
-    Returns a list of {title, url} dicts, capped at 10.
+    Delegates to medium.parse_newsletter_email and converts Article dataclasses
+    to the {title, url} dicts expected by get_todays_newsletter.
     """
-    soup = BeautifulSoup(html, "html.parser")
-
-    # Pass 1: group all matching <a> tags by URL (Medium links each article from
-    # both a thumbnail image and a title <h2> — we need the latter for the title).
-    url_order: list[str] = []
-    url_tags: dict[str, list] = {}
-    for a_tag in soup.find_all("a", href=True):
-        raw_url: str = str(a_tag["href"])
-        clean_url = raw_url.split("?")[0].rstrip("/")
-        if not _ARTICLE_URL_RE.match(clean_url):
-            continue
-        if clean_url not in url_tags:
-            url_order.append(clean_url)
-            url_tags[clean_url] = []
-        url_tags[clean_url].append(a_tag)
-
-    # Pass 2: pick the first <a> with actual text content for each URL.
-    articles: list[dict[str, str]] = []
-    for clean_url in url_order:
-        title = ""
-        for a_tag in url_tags[clean_url]:
-            h2 = a_tag.find("h2")
-            candidate = (
-                h2.get_text(" ", strip=True) if h2 else a_tag.get_text(" ", strip=True)
-            )
-            if candidate:
-                title = candidate
-                break
-        articles.append({"title": title[:200], "url": clean_url})
-        if len(articles) == 10:
-            break
-
-    return articles
+    articles = medium.parse_newsletter_email(html)
+    return [{"title": a.title, "url": a.url} for a in articles]
 
 
 def _resolve_newsletter(name: str) -> dict | None:
