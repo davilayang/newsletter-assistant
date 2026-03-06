@@ -1,50 +1,45 @@
 # Kubernetes Deployment
 
-<!--TODO: Give overview of the deployment instructions, what each section ## means -->
+This guide covers deploying the newsletter assistant to a single-node k3s cluster on Hetzner Cloud. Sections are ordered by workflow:
+
+1. **Provision** — create and secure the Hetzner server
+2. **Bootstrap** — install k3s and fetch kubeconfig
+3. **Build & Push** — build Docker images locally, push to Docker Hub
+4. **Initial Setup** — install cert-manager, create secrets, deploy workloads
+5. **Day-to-Day** — common operations for managing the cluster
 
 ## Prerequisites
 
-- `kubectl` connected to your cluster
-- Docker Desktop installed locally (for building images)
+- `kubectl` installed locally
+- Docker Desktop installed (for building images)
 - A [Docker Hub](https://hub.docker.com/) account
-- A domain name pointed at your cluster's ingress IP (for the frontend)
+- `brew install hcloud` (Hetzner Cloud CLI)
 
 ## Directory Structure
 
-<!-- TODO: Update the structure -->
-
 ```
 k8s/
-  kustomization.yaml        # entry point — pipe through sed to substitute OWNER
-  namespace.yaml
-  pvc.yaml                  # 3 Gi ReadWriteOnce volume (data + creds + NOTES)
-  secret.env.template       # copy to secret.env and fill in values
+  kustomization.yaml        # entry point — placeholders substituted via sed at deploy time
+  namespace.yaml             # newsletter namespace
+  pvc.yaml                   # 3 Gi ReadWriteOnce volume (data + creds + NOTES)
+  secret.env.template        # copy to secret.env and fill in values (gitignored)
   agent/
-    deployment.yaml
+    deployment.yaml          # LiveKit voice agent (1 replica)
   pipeline/
-    cronjob.yaml            # runs daily at 07:00 UTC
+    cronjob.yaml             # scraping pipeline — runs daily at 07:00 UTC
   cert-manager/
-    cluster-issuer.yaml     # Let's Encrypt ACME issuer (ACME_EMAIL substituted via sed)
+    cluster-issuer.yaml      # Let's Encrypt ACME issuer (ACME_EMAIL placeholder)
   frontend/
-    deployment.yaml
-    service.yaml
-    ingress.yaml            # sslip.io host + TLS (SERVER_IP substituted via sed)
+    deployment.yaml          # NiceGUI web UI
+    service.yaml             # ClusterIP on port 80 → 8080
+    ingress.yaml             # sslip.io host + TLS (SERVER_IP placeholder)
 ```
 ---
 
 ## Provision a Hetzner Cloud Server
 
-<!--Add a Prerequisites, including the brew install commands -->
-
 You should have a default Project on the [Console](https://console.hetzner.com/projects).
-
-```bash
-# Install CLI tool
-brew install hcloud
-
-# Get API Key from "Console → Project → Security → API Tokens"
-# $HCLOUD_API_TOKEN
-```
+Get an API key from **Console → Project → Security → API Tokens**.
 
 ### Server Setup
 
@@ -273,8 +268,9 @@ The frontend will be available at `https://<SERVER_IP>.sslip.io` (TLS via cert-m
 Gmail OAuth tokens (`credentials.json`, `token.json`) and the Medium auth state (`medium_auth.json`) must be copied onto the PVC after it is created. 
 
 ```bash
-# Run a pod "bootstrap", terminated manually
-# TODO: Add a comment what this does
+# Start a temporary pod with the PVC mounted at /mnt.
+# It sleeps for 5 minutes so you can copy files in from another terminal.
+# The pod auto-deletes when it exits (--rm).
 kh run bootstrap --image=busybox --rm -it \
   --overrides='{
     "spec": {
