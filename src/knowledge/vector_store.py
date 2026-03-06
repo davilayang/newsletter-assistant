@@ -36,7 +36,7 @@ def _get_collection(chroma_path: Path = CHROMA_PATH) -> chromadb.Collection:
     client = chromadb.PersistentClient(path=str(chroma_path))
     return client.get_or_create_collection(
         name=COLLECTION_NAME,
-        embedding_function=DefaultEmbeddingFunction(),  # all-MiniLM-L6-v2 (384-dim, runs locally)
+        embedding_function=DefaultEmbeddingFunction(),  # type: ignore[arg-type]  # all-MiniLM-L6-v2 (384-dim, runs locally)
         metadata={"hnsw:space": "cosine"},
     )
 

@@ -52,7 +52,7 @@ async def main_page() -> None:
     # ── Header ──────────────────────────────────────────────────────────────
     dark = ui.dark_mode()
     with ui.header(elevated=True).classes("items-center gap-2"):
-        ui.button(icon="menu", on_click=lambda: drawer.toggle()).props(
+        ui.button(icon="menu", on_click=lambda: drawer.toggle()).props(  # type: ignore[has-type]
             "flat round dense"
         )
         ui.label("Newsletter Assistant").classes("text-h6 flex-1")
@@ -75,7 +75,7 @@ async def main_page() -> None:
             query = search_input.value.strip()
             if not query:
                 return
-            search_btn.props("loading")
+            search_btn.props("loading")  # type: ignore[has-type]
             try:
                 results = await run.io_bound(vector_store.search, query, n_results=5)
                 with ui.dialog() as dlg, ui.card().classes("w-full").style(
@@ -96,7 +96,7 @@ async def main_page() -> None:
                     )
                 dlg.open()
             finally:
-                search_btn.props(remove="loading")
+                search_btn.props(remove="loading")  # type: ignore[has-type]
 
         search_btn = (
             ui.button("Search", on_click=run_search)

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+from fastapi.responses import JSONResponse
 from nicegui import app
 
 from src.core.config import settings
@@ -12,7 +13,7 @@ _AGENT_NAME = "newsletter"
 
 
 @app.get("/token")
-async def get_token() -> dict:
+async def get_token() -> dict | JSONResponse:
     """Return a LiveKit JWT and dispatch the agent to the room."""
     from livekit import api  # noqa: PLC0415
     from livekit.api import AccessToken, VideoGrants  # noqa: PLC0415
@@ -25,8 +26,6 @@ async def get_token() -> dict:
             .to_jwt()
         )
     except Exception as exc:
-        from fastapi.responses import JSONResponse  # noqa: PLC0415
-
         return JSONResponse({"error": str(exc)}, status_code=503)
 
     # Dispatch the agent to the room so it joins when the user connects.
