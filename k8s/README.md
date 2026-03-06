@@ -28,7 +28,7 @@ k8s/
   agent/
     deployment.yaml          # LiveKit voice agent (1 replica)
   pipeline/
-    cronjob.yaml             # scraping pipeline — runs daily at 07:00 UTC
+    cronjob.yaml             # not deployed — pipeline runs locally (see note below)
   cert-manager/
     cluster-issuer.yaml      # Let's Encrypt ACME issuer (ACME_EMAIL placeholder)
   frontend/
@@ -331,10 +331,19 @@ kh scale deploy/newsletter-agent --replicas=0 -n newsletter
 kh scale deploy/newsletter-agent --replicas=1 -n newsletter
 ```
 
-### Trigger the pipeline manually
+### Run the Pipeline
+
+The pipeline is **not deployed to k8s** — it runs locally via Docker Compose:
 
 ```bash
-kh create job --from=cronjob/newsletter-pipeline pipeline-manual -n newsletter
+docker compose --profile pipeline run --rm pipeline
+docker compose --profile pipeline run --rm pipeline index
+```
+
+Or directly with `uv`:
+
+```bash
+uv run poe pipeline
 ```
 
 ### Update Configs or Secrets config
@@ -362,7 +371,7 @@ On multi-node clusters, label one node and enable the nodeSelector in each manif
 kh label node <node-name> newsletter=true
 ```
 
-Then uncomment in `agent/deployment.yaml`, `pipeline/cronjob.yaml`, and `frontend/deployment.yaml`:
+Then uncomment in `agent/deployment.yaml` and `frontend/deployment.yaml`:
 
 ```yaml
 nodeSelector:

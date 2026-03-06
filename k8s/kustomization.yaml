@@ -7,7 +7,8 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - agent/deployment.yaml
-  - pipeline/cronjob.yaml
+  # Pipeline runs locally — see docker-compose.yml (profile: pipeline)
+  # - pipeline/cronjob.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
   - frontend/ingress.yaml
@@ -34,9 +35,6 @@ secretGenerator:
 images:
   - name: newsletter-agent
     newName: docker.io/OWNER/newsletter-agent
-    newTag: latest
-  - name: newsletter-pipeline
-    newName: docker.io/OWNER/newsletter-pipeline
     newTag: latest
   - name: newsletter-frontend
     newName: docker.io/OWNER/newsletter-frontend

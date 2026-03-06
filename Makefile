@@ -26,11 +26,9 @@ logs:  ## Tail logs for all services
 
 prod-build:  ## Build images for production (linux/amd64)
 	PLATFORM=linux/amd64 docker compose build
-	PLATFORM=linux/amd64 docker compose --profile pipeline build
 
 prod-push:  ## Push images to Docker Hub
 	docker compose push
-	docker compose --profile pipeline push
 
 prod-deploy:  ## Deploy to k3s cluster
 	$(KH) kustomize --load-restrictor LoadRestrictionsNone k8s/ \
@@ -46,7 +44,7 @@ prod-restart:  ## Restart deployments to pull latest images
 
 # --- Cluster operations ---
 
-.PHONY: pods pod-logs scale-down scale-up pipeline-run
+.PHONY: pods pod-logs scale-down scale-up pipeline
 
 pods:  ## List pods in newsletter namespace
 	$(KH) get pods -n newsletter
@@ -60,8 +58,8 @@ scale-down:  ## Scale agent to 0
 scale-up:  ## Scale agent to 1
 	$(KH) scale deploy/newsletter-agent --replicas=1 -n newsletter
 
-pipeline-run:  ## Trigger pipeline manually
-	$(KH) create job --from=cronjob/newsletter-pipeline pipeline-manual-$$(date +%s) -n newsletter
+pipeline:  ## Run pipeline locally
+	docker compose --profile pipeline run --rm pipeline
 
 # --- Helpers ---
 
