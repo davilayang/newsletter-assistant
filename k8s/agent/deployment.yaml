@@ -13,6 +13,8 @@ spec:
       labels:
         app: newsletter-agent
     spec:
+      imagePullSecrets:
+        - name: dockerhub-creds
       containers:
         - name: agent
           image: newsletter-agent   # rewritten by kustomization.yaml images[]

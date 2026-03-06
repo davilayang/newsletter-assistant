@@ -11,6 +11,7 @@ resources:
   - frontend/deployment.yaml
   - frontend/service.yaml
   - frontend/ingress.yaml
+  - cert-manager/cluster-issuer.yaml
 
 # ConfigMap generated from config/ files — no copy-paste needed.
 # Edit ../config/*.yaml and re-apply to update.

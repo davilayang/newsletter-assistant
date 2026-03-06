@@ -17,6 +17,8 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: dockerhub-creds
           containers:
             - name: pipeline
               image: newsletter-pipeline   # rewritten by kustomization.yaml images[]

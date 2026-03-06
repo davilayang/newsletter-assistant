@@ -4,20 +4,14 @@ metadata:
   name: newsletter-frontend
   namespace: newsletter
   annotations:
-    # Uncomment and set for your ingress controller + TLS provider:
-    # kubernetes.io/ingress.class: nginx
-    # cert-manager.io/cluster-issuer: letsencrypt-prod
-    #
-    # k3s (Traefik):
-    # traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    # traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
 spec:
-  # tls:
-  #   - hosts:
-  #       - newsletter.yourdomain.com
-  #     secretName: newsletter-tls
+  tls:
+    - hosts:
+        - SERVER_IP.sslip.io    # replaced at deploy time via sed
+      secretName: newsletter-frontend-tls
   rules:
-    - host: newsletter.yourdomain.com   # replace with your domain
+    - host: SERVER_IP.sslip.io  # replaced at deploy time via sed
       http:
         paths:
           - path: /

@@ -13,6 +13,8 @@ spec:
       labels:
         app: newsletter-frontend
     spec:
+      imagePullSecrets:
+        - name: dockerhub-creds
       containers:
         - name: frontend
           image: newsletter-frontend   # rewritten by kustomization.yaml images[]
