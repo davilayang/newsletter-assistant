@@ -46,6 +46,7 @@ _BLOCK_MARKERS = (
     "become a member to read this story",
     "read the rest of this story with a free account",
     "get access to this story",
+    "create an account to read the full story",
 )
 
 # Warn if a newsletter email yields fewer than this many articles — likely
