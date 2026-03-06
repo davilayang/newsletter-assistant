@@ -1,6 +1,7 @@
 services:
   frontend:
     image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-frontend:latest
+    platform: ${PLATFORM:-}
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
@@ -16,6 +17,7 @@ services:
 
   agent:
     image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-agent:latest
+    platform: ${PLATFORM:-}
     build:
       context: .
       dockerfile: docker/agent/Dockerfile
@@ -29,6 +31,8 @@ services:
     restart: unless-stopped
 
   pipeline:
+    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-pipeline:latest
+    platform: ${PLATFORM:-}
     build:
       context: .
       dockerfile: docker/pipeline/Dockerfile

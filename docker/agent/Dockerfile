@@ -20,4 +20,4 @@ COPY src/ ./src/
 COPY config/ ./config/
 
 ENTRYPOINT [".venv/bin/python", "-m"]
-CMD ["src.frontend.agent", "start"]
+CMD ["src.agent.agent", "start"]
