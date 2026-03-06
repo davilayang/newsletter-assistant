@@ -101,11 +101,12 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
             url_tags[clean_url] = []
         url_tags[clean_url].append(a_tag)
 
-    # Pass 2: for each URL pick the <a> tag with the best title.
+    # Pass 2: for each URL pick the <a> tag with the best title and extract author.
     articles: list[Article] = []
     for clean_url in url_order:
         title = ""
         snippet = ""
+        author = ""
         for a_tag in url_tags[clean_url]:
             h2 = a_tag.find("h2")
             candidate = (
@@ -117,10 +118,36 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
                 snippet = h3.get_text(" ", strip=True) if h3 else ""
                 break
 
+        # Extract author from the card container that holds this article.
+        # Walk up from the first <a> tag to find the enclosing card div,
+        # then look for author profile links (href containing "/@").
+        if not author and url_tags[clean_url]:
+            card = url_tags[clean_url][0]
+            for _ in range(10):  # walk up at most 10 levels
+                card = card.parent
+                if card is None:
+                    break
+                # Card containers have author profile links alongside article links
+                # Match profile-only links: /@username followed by ? or end,
+                # but NOT /@username/article-slug (which would be an article link).
+                # Multiple <a> tags may link to the same profile (avatar img + name text);
+                # pick the first one that has visible text.
+                _profile_re = re.compile(
+                    r"https?://medium\.com/@[^/?]+(?:\?|$)"
+                )
+                for author_link in card.find_all("a", href=_profile_re):
+                    name = author_link.get_text(" ", strip=True).strip()
+                    if name:
+                        author = name
+                        break
+                if author:
+                    break
+
         articles.append(
             Article(
                 url=clean_url,
                 title=title[:200],
+                author=author[:100],
                 snippet=snippet[:500],
             )
         )

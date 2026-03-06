@@ -135,6 +135,30 @@ def test_parse_warns_when_too_few_articles(caplog) -> None:
     assert any("expected" in r.message for r in caplog.records)
 
 
+def test_parse_extracts_author_from_card() -> None:
+    """Author name should be extracted from the profile link in the card container."""
+    html = """
+    <html><body>
+      <div>
+        <div>
+          <a href="https://medium.com/@johndoe?source=email"><img alt="John Doe"></a>
+          <span><a href="https://medium.com/@johndoe?source=email">John Doe</a></span>
+        </div>
+        <div>
+          <a href="https://medium.com/@johndoe/my-great-article-abc12345def?source=email">
+            <h2>My Great Article</h2>
+            <h3>A short snippet about the article</h3>
+          </a>
+        </div>
+      </div>
+    </body></html>
+    """
+    articles = parse_newsletter_email(html)
+    assert len(articles) == 1
+    assert articles[0].author == "John Doe"
+    assert articles[0].title == "My Great Article"
+
+
 def test_parse_extracts_h2_title() -> None:
     articles = parse_newsletter_email(_SAMPLE_HTML)
     titles = [a.title for a in articles]
