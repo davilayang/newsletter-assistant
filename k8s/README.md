@@ -27,8 +27,6 @@ k8s/
   secret.env.template        # copy to secret.env and fill in values (gitignored)
   agent/
     deployment.yaml          # LiveKit voice agent (1 replica)
-  pipeline/
-    cronjob.yaml             # not deployed — pipeline runs locally (see note below)
   cert-manager/
     cluster-issuer.yaml      # Let's Encrypt ACME issuer (ACME_EMAIL placeholder)
   frontend/

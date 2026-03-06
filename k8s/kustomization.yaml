@@ -7,8 +7,6 @@ resources:
   - namespace.yaml
   - pvc.yaml
   - agent/deployment.yaml
-  # Pipeline runs locally — see docker-compose.yml (profile: pipeline)
-  # - pipeline/cronjob.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
   - frontend/ingress.yaml
@@ -30,7 +28,7 @@ secretGenerator:
       - secret.env
 
 # Image overrides — replace OWNER with your Docker Hub username.
-# These names are referenced in the Deployment/CronJob manifests;
+# These names are referenced in the Deployment manifests;
 # Kustomize rewrites them to the full registry path on apply.
 images:
   - name: newsletter-agent
