@@ -10,6 +10,7 @@ import re
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from urllib.parse import urlparse
 from pathlib import Path
 
 import markdownify as md_lib
@@ -27,6 +28,8 @@ _ARTICLE_URL_RE = re.compile(
     r"|levelup\.gitconnected\.com|pub\.towardsai\.net)"
     r"/\S+-[a-f0-9]{8,12}$"
 )
+# Medium internal/editorial paths that match _ARTICLE_URL_RE but aren't user articles.
+_EXCLUDED_PATH_PREFIXES = ("/jobs-at-medium/",)
 
 # Auth state
 AUTH_STATE_PATH = Path("creds/medium_auth.json")
@@ -95,6 +98,10 @@ def parse_newsletter_email(html_body: str) -> list[Article]:
         raw_url: str = str(a_tag["href"])
         clean_url = raw_url.split("?")[0].rstrip("/")
         if not _ARTICLE_URL_RE.match(clean_url):
+            continue
+        # Skip Medium internal/editorial pages
+        path = urlparse(clean_url).path
+        if any(path.startswith(prefix) for prefix in _EXCLUDED_PATH_PREFIXES):
             continue
         if clean_url not in url_tags:
             url_order.append(clean_url)

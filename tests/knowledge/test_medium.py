@@ -109,6 +109,19 @@ def test_parse_skips_non_medium_domains() -> None:
     assert "https://example.com/not-medium" not in urls
 
 
+def test_parse_skips_medium_internal_pages() -> None:
+    html = """
+    <html><body>
+      <a href="https://medium.com/jobs-at-medium/work-at-medium-959d1a85284e">Careers</a>
+      <a href="https://medium.com/some-real-article-abc12345def"><h2>Real</h2></a>
+    </body></html>
+    """
+    articles = parse_newsletter_email(html)
+    urls = [a.url for a in articles]
+    assert "https://medium.com/jobs-at-medium/work-at-medium-959d1a85284e" not in urls
+    assert "https://medium.com/some-real-article-abc12345def" in urls
+
+
 def test_parse_empty_html() -> None:
     assert parse_newsletter_email("") == []
     assert parse_newsletter_email("<html><body></body></html>") == []
