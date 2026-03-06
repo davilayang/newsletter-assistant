@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-frontend:latest
+    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-frontend
     platform: ${PLATFORM:-}
     build:
       context: .
@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
 
   agent:
-    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-agent:latest
+    image: ${DOCKER_USER:?Set DOCKER_USER}/newsletter-agent
     platform: ${PLATFORM:-}
     build:
       context: .

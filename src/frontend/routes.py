@@ -12,7 +12,7 @@ _ROOM = "newsletter"
 _AGENT_NAME = "newsletter"
 
 
-@app.get("/token")
+@app.get("/token", response_model=None)
 async def get_token() -> dict | JSONResponse:
     """Return a LiveKit JWT and dispatch the agent to the room."""
     from livekit import api  # noqa: PLC0415
