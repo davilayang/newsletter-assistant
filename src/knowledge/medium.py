@@ -10,8 +10,8 @@ import re
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from urllib.parse import urlparse
 from pathlib import Path
+from urllib.parse import urlparse
 
 import markdownify as md_lib
 
@@ -139,9 +139,7 @@ def parse_medium_newsletter(html_body: str) -> list[Article]:
                 # but NOT /@username/article-slug (which would be an article link).
                 # Multiple <a> tags may link to the same profile (avatar img + name text);
                 # pick the first one that has visible text.
-                _profile_re = re.compile(
-                    r"https?://medium\.com/@[^/?]+(?:\?|$)"
-                )
+                _profile_re = re.compile(r"https?://medium\.com/@[^/?]+(?:\?|$)")
                 for author_link in card.find_all("a", href=_profile_re):
                     name = author_link.get_text(" ", strip=True).strip()
                     if name:
