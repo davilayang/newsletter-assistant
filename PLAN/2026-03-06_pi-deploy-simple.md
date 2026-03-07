@@ -15,16 +15,22 @@ Docker memory limits require cgroup memory support enabled in the kernel. Withou
 ssh $PI "echo ' cgroup_enable=memory cgroup_memory=1' | sudo tee -a /boot/firmware/cmdline.txt && sudo reboot"
 ```
 
-### Enable HTTPS for mic access (one-time)
+### Enable HTTPS for mic access (one-time) (host on MacOS)
 
 Browsers block `getUserMedia()` (microphone) on non-localhost HTTP. Use `mkcert` to create a trusted local CA + cert.
 
 ```bash
 # On Mac — install mkcert and create a local CA
 brew install mkcert
+# On Raspberry PI,
+sudo apt install mkcert
 
 # Generate cert for the Pi's IP (or hostname)
 mkcert -cert-file creds/pi-cert.pem -key-file creds/pi-key.pem 192.168.1.168
+mkcert 192.168.1.168
+
+mkcert -CAROOT
+# shows the root cert
 
 # Copy certs to Pi
 # rsync -avz pi-cert.pem pi-key.pem $PI:~/newsletter-assistant/creds/
