@@ -4,6 +4,7 @@ creds
 .zed
 *.ipynb
 .ipynb_checkpoints
+.mcp.json
 
 # Python-generated files
 .mypy_cache
