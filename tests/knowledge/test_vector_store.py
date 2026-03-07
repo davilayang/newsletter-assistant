@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src.knowledge.vector_store import _chunk_text, search, upsert_article
+from knowledge.vector_store import _chunk_text, search, upsert_article
 
 # ---------------------------------------------------------------------------
 # Unit tests for chunking logic (no ChromaDB needed)

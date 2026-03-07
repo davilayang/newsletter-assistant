@@ -27,7 +27,7 @@ from livekit.rtc import AudioFrame
 # TTS text normalisation
 # ---------------------------------------------------------------------------
 _SPEECH_REPLACEMENTS_PATH = (
-    Path(__file__).parents[2] / "config" / "speech_replacements.yaml"
+    Path(__file__).parents[4] / "config" / "speech_replacements.yaml"
 )
 
 
@@ -47,7 +47,7 @@ def _normalize_for_speech(text: str) -> str:
     return text
 
 
-from src.core.gmail.client import get_gmail_service
+from core.gmail.client import get_gmail_service
 
 from .tools import (
     _NEWSLETTER_NAMES,

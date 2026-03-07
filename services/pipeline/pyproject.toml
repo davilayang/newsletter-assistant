@@ -1,0 +1,20 @@
+[project]
+name = "newsletter-pipeline"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "newsletter-core",
+    "newsletter-knowledge",
+    "pyyaml>=6.0.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pipeline"]
+
+[tool.uv.sources]
+newsletter-core = { workspace = true }
+newsletter-knowledge = { workspace = true }

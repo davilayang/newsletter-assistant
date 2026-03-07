@@ -10,12 +10,23 @@ A personal knowledge assistant built in two phases:
 
 ## Package Manager
 
-This project uses [`uv`](https://docs.astral.sh/uv/) exclusively. Do not use `pip` or `poetry`.
+This project uses [`uv`](https://docs.astral.sh/uv/) exclusively with **uv workspaces**. Do not use `pip` or `poetry`.
 
 ```bash
-uv sync              # Install all dependencies (including dev)
+uv sync              # Install all workspace members + dev deps
 uv run <command>     # Run a command in the project virtualenv
 ```
+
+### Workspace Members
+
+| Package | Path | Description |
+|---|---|---|
+| `newsletter-core` | `packages/core` | Shared primitives (config, Gmail client, notes) |
+| `newsletter-knowledge` | `packages/knowledge` | Scraping, parsing, stores (SQLite, ChromaDB) |
+| `newsletter-mcp` | `packages/mcp` | MCP servers (Gmail) |
+| `newsletter-agent` | `services/agent` | LiveKit voice agent |
+| `newsletter-frontend` | `services/frontend` | NiceGUI web UI |
+| `newsletter-pipeline` | `services/pipeline` | Thin wrapper for pipeline CLI |
 
 ## Common Commands (via `poe`)
 
@@ -45,55 +56,62 @@ uv run poe frontend            # Run NiceGUI UI at http://127.0.0.1:8080 (loads 
 ## Architecture
 
 ```
-src/
-  core/               # Shared primitives — imported by all other packages
-    config.py         # pydantic-settings (Settings), loads .env
+packages/
+  core/src/core/          # Shared primitives — imported by all other packages
+    config.py             # pydantic-settings (Settings), loads .env
     gmail/
-      client.py       # OAuth 2.0 auth flow + Gmail service client
-      ops.py          # list_messages, get_message_content, get_message_html_body, create_draft, send_draft
-    notes.py          # Append-only markdown notes writer → NOTES/<date>_medium-notes.md
+      client.py           # OAuth 2.0 auth flow + Gmail service client
+      ops.py              # list_messages, get_message_content, get_message_html_body, create_draft, send_draft
+    notes.py              # Append-only markdown notes writer → NOTES/<date>_medium-notes.md
 
-  mcp/                # MCP servers — one sub-package per server
+  knowledge/src/knowledge/  # Scraping + knowledge pipeline (Phase 2)
+    fetcher.py            # Tiered article fetcher: Jina Reader → mediumapi.com → camoufox (browser)
+    medium.py             # Medium newsletter HTML parser + camoufox browser fetcher
+    the_batch.py          # "The Batch" (DeepLearning.AI) newsletter email parser
+    boring_cashcow.py     # "Boring Cash Cow" newsletter email parser
+    pipeline.py           # run() — cron / Airflow PythonOperator entrypoint
+    raw_store.py          # SQLite: articles table + scrape_log for dedup (Medium)
+    batch_store.py        # SQLite store for The Batch newsletter
+    cashcow_store.py      # SQLite store for Boring Cash Cow newsletter
+    vector_store.py       # ChromaDB: chunk → embed → upsert, semantic search
+    graph.py              # Neo4j (Phase 2+)
+
+  mcp/src/mcp/            # MCP servers — one sub-package per server
     gmail/
-      server.py       # FastMCP: get_unread_emails, create_draft_reply, send_draft_message
-    vector_store/     # Phase 2
-    graph/            # Phase 2+
+      server.py           # FastMCP: get_unread_emails, create_draft_reply, send_draft_message
 
-  agent/              # LiveKit voice agent (Phase 1)
-    agent.py          # AgentServer: Deepgram STT → openai/gpt-4.1-mini LLM → Inworld TTS
-    tools.py          # LLM function tools: get_todays_newsletter, read_article, index_article, save_note, search_knowledge
+services/
+  agent/src/agent/        # LiveKit voice agent (Phase 1)
+    agent.py              # AgentServer: Deepgram STT → Anthropic LLM → ElevenLabs TTS
+    tools.py              # LLM function tools: get_todays_newsletter, read_article, index_article, save_note, search_knowledge
 
-  knowledge/          # Scraping + knowledge pipeline (Phase 2)
-    fetcher.py        # Tiered article fetcher: Jina Reader → mediumapi.com → camoufox (browser)
-    medium.py         # Medium newsletter HTML parser + camoufox browser fetcher
-    the_batch.py      # "The Batch" (DeepLearning.AI) newsletter email parser
-    boring_cashcow.py # "Boring Cash Cow" newsletter email parser
-    pipeline.py       # run() — cron / Airflow PythonOperator entrypoint
-    raw_store.py      # SQLite: articles table + scrape_log for dedup (Medium)
-    batch_store.py    # SQLite store for The Batch newsletter
-    cashcow_store.py  # SQLite store for Boring Cash Cow newsletter
-    vector_store.py   # ChromaDB: chunk → embed → upsert, semantic search
-    graph.py          # Neo4j (Phase 2+)
+  frontend/src/frontend/  # NiceGUI web UI (served on port 8080)
+    app.py                # Entrypoint — ui.run()
+    page.py               # Single-page layout: header, drawer (articles + search), voice session, transcript, notes
+    routes.py             # FastAPI GET /token — issues LiveKit JWT and dispatches agent to room
+    livekit_widget.py     # HTML/JS widget for LiveKit audio (WebSocket push to NiceGUI)
 
-  frontend/           # NiceGUI web UI (served on port 8080)
-    app.py            # Entrypoint — ui.run()
-    page.py           # Single-page layout: header, drawer (articles + search), voice session, transcript, notes
-    routes.py         # FastAPI GET /token — issues LiveKit JWT and dispatches agent to room
-    livekit_widget.py # HTML/JS widget for LiveKit audio (WebSocket push to NiceGUI)
+  pipeline/src/pipeline/  # Thin wrapper — delegates to knowledge.pipeline
+    __main__.py           # CLI entrypoint
 
-config/               # Runtime config files (not gitignored)
-  newsletters.yaml    # Newsletter registry: name → Gmail query + metadata
+config/                   # Runtime config files (not gitignored)
+  newsletters.yaml        # Newsletter registry: name → Gmail query + metadata
   speech_replacements.yaml  # TTS normalisation regex rules
 
-dags/                 # Airflow DAGs — thin wrappers over knowledge/pipeline.py
+data/                     # Runtime — gitignored
+  articles.db             # SQLite raw store (source of truth, back this up)
+  chroma/                 # ChromaDB vector index (rebuildable from articles.db)
 
-data/                 # Runtime — gitignored
-  articles.db         # SQLite raw store (source of truth, back this up)
-  chroma/             # ChromaDB vector index (rebuildable from articles.db)
+creds/                    # GCP OAuth credentials — gitignored
+  credentials.json        # Download from Google Cloud Console
+  token.json              # Auto-generated on first run
 
-creds/                # GCP OAuth credentials — gitignored
-  credentials.json    # Download from Google Cloud Console
-  token.json          # Auto-generated on first run
+docker/                   # Per-service Dockerfiles
+  agent/Dockerfile
+  frontend/Dockerfile
+  pipeline/Dockerfile
+
+tests/                    # Tests (stay at root)
 ```
 
 **Dependency rule:** `core/` is the only shared package. `mcp/`, `agent/`, `knowledge/` never import from each other. `frontend/` is the exception — it imports from `knowledge/` (raw_store, vector_store) for the UI sidebar.
@@ -120,7 +138,7 @@ To register the Gmail MCP server in `.mcp.json` (for Claude Code CLI):
   "mcpServers": {
     "mcp-gmail": {
       "command": "uv",
-      "args": ["--directory", "/absolute/path/to/mcp-project", "run", "-m", "src.mcp.gmail.server"]
+      "args": ["--directory", "/absolute/path/to/newsletter-assistant", "run", "-m", "mcp.gmail.server"]
     }
   }
 }
@@ -129,7 +147,7 @@ To register the Gmail MCP server in `.mcp.json` (for Claude Code CLI):
 ## Setup Prerequisites
 
 1. GCP OAuth 2.0 credentials at `creds/credentials.json` (Google Cloud Console → Gmail API → Credentials → OAuth 2.0 Client IDs)
-2. `.env` file at project root — required keys (see `src/core/config.py`):
+2. `.env` file at project root — required keys (see `packages/core/src/core/config.py`):
    - `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
    - `DEEPGRAM_API_KEY`
    - `OPENAI_API_KEY` (agent LLM)

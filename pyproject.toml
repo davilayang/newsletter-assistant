@@ -1,46 +1,45 @@
 [project]
-name = "mcp-project"
+name = "newsletter-assistant"
 version = "0.1.0"
-description = "Add your description here"
+description = "Personal knowledge assistant — voice agent + scraping pipeline"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "httpx>=0.28.1",
-    "mcp[cli]>=1.25.0",
-    "google-auth==2.47.0",
-    "google-auth-oauthlib==1.2.4",
-    "google-api-python-client==2.188.0",
-    # Phase 1 — newsletter parsing
-    "beautifulsoup4>=4.12",
-    # Phase 1 — agent (mirrors livekit-project/eva/voice-agent versions)
-    "livekit-agents[silero,turn-detector]~=1.3",
-    "livekit-plugins-deepgram~=1.0",
-    "livekit-plugins-elevenlabs~=1.0",
-    "livekit-plugins-anthropic~=1.0",
-    # Phase 2 — knowledge pipeline
-    "chromadb>=0.6",
-    "camoufox>=0.4.11",
-    "markdownify>=1.2.2",
-    "pyyaml>=6.0.3",
-    # Frontend
-    "nicegui>=3.8",
+    "newsletter-core",
+    "newsletter-knowledge",
+    "newsletter-mcp",
+    "newsletter-agent",
+    "newsletter-frontend",
+    "newsletter-pipeline",
+]
+
+[tool.uv.sources]
+newsletter-core = { workspace = true }
+newsletter-knowledge = { workspace = true }
+newsletter-mcp = { workspace = true }
+newsletter-agent = { workspace = true }
+newsletter-frontend = { workspace = true }
+newsletter-pipeline = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+    "packages/*",
+    "services/*",
 ]
 
 [dependency-groups]
 dev = [
-    "ipython",
-    "jupyterlab",
-    "jupyterlab-vim",
-    "pandas",
     "poethepoet>=0.29.0,<1.0.0",
     "black==23.7.0",
     "mypy>=1.1.1,<2.0.0",
-    "pydantic-settings>=2.0.3,<3.0.0",
-    "pydantic>=2.4.2,<3.0.0",
     "pytest==7.4.2",
     "pytest-cov>=4.0.0,<5.0.0",
     "pytest-mock>=3.10.0,<4.0.0",
     "ruff>=0.4.6,<1.0.0",
+    "ipython",
+    "jupyterlab",
+    "jupyterlab-vim",
+    "pandas",
     "playwright>=1.58.0",
     "playwright-stealth>=2.0.2",
     "types-pyyaml>=6.0.12.20250915",
@@ -51,7 +50,7 @@ dev = [
 ## Agent and Scraping Pipeline
 
 [tool.poe.tasks.agent]
-cmd = "python -m src.agent.agent ${mode}"
+cmd = "python -m agent.agent ${mode}"
 envfile = ".env"
 help = "Run the voice agent (loads .env). Modes: console (default), dev"
 
@@ -61,12 +60,12 @@ help = "Run the voice agent (loads .env). Modes: console (default), dev"
   positional = true
 
 [tool.poe.tasks.pipeline]
-cmd = "python -m src.knowledge.pipeline"
+cmd = "python -m knowledge.pipeline"
 envfile = ".env"
 help = "Run the scraping pipeline once (loads .env)"
 
 [tool.poe.tasks.frontend]
-cmd = "python -m src.frontend.app"
+cmd = "python -m frontend.app"
 envfile = ".env"
 help = "Run the NiceGUI frontend UI (loads .env)"
 
@@ -77,11 +76,11 @@ cmd = "pytest -v"
 help = "Run tests with verbose output (defaults to 'tests/' if no path given)"
 
 [tool.poe.tasks.fmt]
-cmd = "black --check src tests"
+cmd = "black --check packages/ services/ tests"
 help = "Check code formatting with black (does not modify)"
 
 [tool.poe.tasks.fmt-fix]
-cmd = "black src tests"
+cmd = "black packages/ services/ tests"
 help = "Fix code formating issues automatically with black"
 
 [tool.poe.tasks.lint]
@@ -97,7 +96,7 @@ sequence = ["fmt-fix", "lint-fix"]
 help = "Fix all issues: formatting with black and linting with ruff"
 
 [tool.poe.tasks.mypy]
-cmd = "mypy src"
+cmd = "mypy packages/ services/"
 help = "Run type checking with mypy"
 
 [tool.poe.tasks.check]
@@ -113,7 +112,6 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "--pdbcls=IPython.terminal.debugger:TerminalPdb"
-pythonpath = ["."]
 testpaths = ["tests"]
 
 [tool.ruff]

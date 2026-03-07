@@ -5,10 +5,9 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from core.notes import NOTES_DIR
+from knowledge import raw_store, vector_store
 from nicegui import run, ui
-
-from src.core.notes import NOTES_DIR
-from src.knowledge import raw_store, vector_store
 
 from .livekit_widget import _AUDIO_WIDGET_HTML, _AUDIO_WIDGET_JS
 

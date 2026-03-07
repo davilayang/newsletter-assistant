@@ -7,7 +7,7 @@ from typing import Any
 
 from nicegui import ui
 
-from src.frontend import page, routes  # noqa: F401 — imported to register decorators
+from frontend import page, routes  # noqa: F401 — imported to register decorators
 
 if __name__ in ("__main__", "__mp_main__"):
     ssl_kwargs: dict[str, Any] = {}

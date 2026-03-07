@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.knowledge.fetcher import (
+from knowledge.fetcher import (
     _fetch_via_jina,
     _fetch_via_mediumapi,
     _medium_article_id,
@@ -58,38 +58,38 @@ _SHORT_CONTENT = "Too short"
 _PAYWALL_CONTENT = "This story is only available to Medium members" + "x" * 600
 
 
-@patch("src.knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.httpx.get")
 def test_jina_returns_valid_content(mock_get: MagicMock) -> None:
     mock_get.return_value = MagicMock(status_code=200, text=_VALID_CONTENT)
     result = _fetch_via_jina("https://medium.com/article-abc12345678")
     assert result == _VALID_CONTENT
 
 
-@patch("src.knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.httpx.get")
 def test_jina_returns_empty_on_short_content(mock_get: MagicMock) -> None:
     mock_get.return_value = MagicMock(status_code=200, text=_SHORT_CONTENT)
     assert _fetch_via_jina("https://medium.com/article-abc12345678") == ""
 
 
-@patch("src.knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.httpx.get")
 def test_jina_returns_empty_on_paywall(mock_get: MagicMock) -> None:
     mock_get.return_value = MagicMock(status_code=200, text=_PAYWALL_CONTENT)
     assert _fetch_via_jina("https://medium.com/article-abc12345678") == ""
 
 
-@patch("src.knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.httpx.get")
 def test_jina_skips_on_429(mock_get: MagicMock) -> None:
     mock_get.return_value = MagicMock(status_code=429, text="Rate limited")
     assert _fetch_via_jina("https://medium.com/article-abc12345678") == ""
 
 
-@patch("src.knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.httpx.get")
 def test_jina_skips_on_5xx(mock_get: MagicMock) -> None:
     mock_get.return_value = MagicMock(status_code=503, text="Service unavailable")
     assert _fetch_via_jina("https://medium.com/article-abc12345678") == ""
 
 
-@patch("src.knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.httpx.get")
 def test_jina_skips_on_timeout(mock_get: MagicMock) -> None:
     import httpx
 
@@ -102,15 +102,15 @@ def test_jina_skips_on_timeout(mock_get: MagicMock) -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("src.knowledge.fetcher.settings")
+@patch("knowledge.fetcher.settings")
 def test_mediumapi_raises_without_key(mock_settings: MagicMock) -> None:
     mock_settings.rapidapi_key = ""
     with pytest.raises(ValueError, match="RAPIDAPI_KEY"):
         _fetch_via_mediumapi("https://medium.com/article-abc12345678")
 
 
-@patch("src.knowledge.fetcher.httpx.get")
-@patch("src.knowledge.fetcher.settings")
+@patch("knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.settings")
 def test_mediumapi_returns_valid_content(
     mock_settings: MagicMock, mock_get: MagicMock
 ) -> None:
@@ -124,8 +124,8 @@ def test_mediumapi_returns_valid_content(
     assert result == _VALID_CONTENT
 
 
-@patch("src.knowledge.fetcher.httpx.get")
-@patch("src.knowledge.fetcher.settings")
+@patch("knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.settings")
 def test_mediumapi_skipped_when_quota_zero(
     mock_settings: MagicMock, mock_get: MagicMock
 ) -> None:
@@ -138,15 +138,15 @@ def test_mediumapi_skipped_when_quota_zero(
     assert _fetch_via_mediumapi("https://medium.com/article-abc12345678") == ""
 
 
-@patch("src.knowledge.fetcher.settings")
+@patch("knowledge.fetcher.settings")
 def test_mediumapi_skipped_when_no_article_id(mock_settings: MagicMock) -> None:
     mock_settings.rapidapi_key = "test-key"
     # URL without hex ID suffix
     assert _fetch_via_mediumapi("https://medium.com/towards-data-science/no-id") == ""
 
 
-@patch("src.knowledge.fetcher.httpx.get")
-@patch("src.knowledge.fetcher.settings")
+@patch("knowledge.fetcher.httpx.get")
+@patch("knowledge.fetcher.settings")
 def test_mediumapi_skipped_on_404(
     mock_settings: MagicMock, mock_get: MagicMock
 ) -> None:
@@ -163,9 +163,9 @@ def test_mediumapi_skipped_on_404(
 # ---------------------------------------------------------------------------
 
 
-@patch("src.knowledge.fetcher._fetch_via_camoufox_batched")
-@patch("src.knowledge.fetcher._fetch_via_mediumapi")
-@patch("src.knowledge.fetcher._fetch_via_jina")
+@patch("knowledge.fetcher._fetch_via_camoufox_batched")
+@patch("knowledge.fetcher._fetch_via_mediumapi")
+@patch("knowledge.fetcher._fetch_via_jina")
 def test_fetch_articles_jina_success_no_escalation(
     mock_jina: MagicMock,
     mock_mediumapi: MagicMock,
@@ -181,9 +181,9 @@ def test_fetch_articles_jina_success_no_escalation(
     mock_camoufox.assert_not_called()
 
 
-@patch("src.knowledge.fetcher._fetch_via_camoufox_batched")
-@patch("src.knowledge.fetcher._fetch_via_mediumapi")
-@patch("src.knowledge.fetcher._fetch_via_jina")
+@patch("knowledge.fetcher._fetch_via_camoufox_batched")
+@patch("knowledge.fetcher._fetch_via_mediumapi")
+@patch("knowledge.fetcher._fetch_via_jina")
 def test_fetch_articles_escalates_to_tier2(
     mock_jina: MagicMock,
     mock_mediumapi: MagicMock,
@@ -199,9 +199,9 @@ def test_fetch_articles_escalates_to_tier2(
     mock_camoufox.assert_not_called()
 
 
-@patch("src.knowledge.fetcher._fetch_via_camoufox_batched")
-@patch("src.knowledge.fetcher._fetch_via_mediumapi")
-@patch("src.knowledge.fetcher._fetch_via_jina")
+@patch("knowledge.fetcher._fetch_via_camoufox_batched")
+@patch("knowledge.fetcher._fetch_via_mediumapi")
+@patch("knowledge.fetcher._fetch_via_jina")
 def test_fetch_articles_escalates_to_tier3(
     mock_jina: MagicMock,
     mock_mediumapi: MagicMock,
@@ -218,9 +218,9 @@ def test_fetch_articles_escalates_to_tier3(
     mock_camoufox.assert_called_once_with([url])
 
 
-@patch("src.knowledge.fetcher._fetch_via_camoufox_batched")
-@patch("src.knowledge.fetcher._fetch_via_mediumapi")
-@patch("src.knowledge.fetcher._fetch_via_jina")
+@patch("knowledge.fetcher._fetch_via_camoufox_batched")
+@patch("knowledge.fetcher._fetch_via_mediumapi")
+@patch("knowledge.fetcher._fetch_via_jina")
 def test_fetch_articles_all_tiers_fail(
     mock_jina: MagicMock,
     mock_mediumapi: MagicMock,
@@ -241,8 +241,8 @@ def test_fetch_articles_all_tiers_fail(
 # ---------------------------------------------------------------------------
 
 
-@patch("src.knowledge.fetcher.raw_store.upsert_article")
-@patch("src.knowledge.fetcher.fetch_articles")
+@patch("knowledge.fetcher.raw_store.upsert_article")
+@patch("knowledge.fetcher.fetch_articles")
 def test_fetch_and_cache_stores_full_content(
     mock_fetch: MagicMock,
     mock_raw_upsert: MagicMock,
@@ -261,8 +261,8 @@ def test_fetch_and_cache_stores_full_content(
     )
 
 
-@patch("src.knowledge.fetcher.raw_store.upsert_article")
-@patch("src.knowledge.fetcher.fetch_articles")
+@patch("knowledge.fetcher.raw_store.upsert_article")
+@patch("knowledge.fetcher.fetch_articles")
 def test_fetch_and_cache_stores_snippet_on_failure(
     mock_fetch: MagicMock,
     mock_raw_upsert: MagicMock,

@@ -14,8 +14,9 @@ from datetime import date
 
 import httpx
 
-from src.core.config import settings
-from src.knowledge import medium, raw_store
+from core.config import settings
+
+from knowledge import medium, raw_store
 
 logger = logging.getLogger(__name__)
 

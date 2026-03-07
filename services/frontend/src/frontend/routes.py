@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
+from core.config import settings
 from fastapi.responses import JSONResponse
 from nicegui import app
-
-from src.core.config import settings
 
 _ROOM = "newsletter"
 _AGENT_NAME = "newsletter"

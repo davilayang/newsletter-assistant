@@ -2,8 +2,8 @@
 
 from datetime import date
 
-from src.knowledge.batch_store import get_sections, upsert_section
-from src.knowledge.the_batch import BatchSection, parse_the_batch_html
+from knowledge.batch_store import get_sections, upsert_section
+from knowledge.the_batch import BatchSection, parse_the_batch_html
 
 # ---------------------------------------------------------------------------
 # Minimal but realistic HTML fragments

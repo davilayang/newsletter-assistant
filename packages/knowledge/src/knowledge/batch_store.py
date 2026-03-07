@@ -1,5 +1,5 @@
-# src/knowledge/cashcow_store.py
-# SQLite store for Boring Cash Cow newsletter sections.
+# src/knowledge/batch_store.py
+# SQLite store for The Batch newsletter sections.
 
 from __future__ import annotations
 
@@ -8,9 +8,9 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from src.knowledge.boring_cashcow import CashCowSection
+from knowledge.the_batch import BatchSection
 
-DB_PATH = Path("data/boring_cashcow.db")
+DB_PATH = Path("data/the_batch.db")
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS sections (
@@ -35,7 +35,7 @@ def _connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
 
 
 def upsert_section(
-    section: CashCowSection,
+    section: BatchSection,
     db_path: Path = DB_PATH,
 ) -> None:
     """Insert or replace a section. Idempotent on (newsletter_date, title)."""
@@ -61,7 +61,7 @@ def upsert_section(
 def get_sections(
     since: date | None = None,
     db_path: Path = DB_PATH,
-) -> list[CashCowSection]:
+) -> list[BatchSection]:
     """Return sections, optionally filtered to those on or after *since*."""
     with _connect(db_path) as conn:
         if since is None:
@@ -75,7 +75,7 @@ def get_sections(
             ).fetchall()
 
     return [
-        CashCowSection(
+        BatchSection(
             title=r["title"],
             content_md=r["content_md"],
             newsletter_date=date.fromisoformat(r["newsletter_date"])

@@ -1,7 +1,7 @@
 # tests/knowledge/test_medium.py
 
 
-from src.knowledge.medium import (
+from knowledge.medium import (
     Article,
     _is_valid_content,
     check_auth_state,
@@ -143,7 +143,7 @@ def test_parse_warns_when_too_few_articles(caplog) -> None:
       <a href="https://medium.com/article-two-def67890">Second</a>
     </body></html>
     """
-    with caplog.at_level(logging.WARNING, logger="src.knowledge.medium"):
+    with caplog.at_level(logging.WARNING, logger="knowledge.medium"):
         parse_medium_newsletter(html)
     assert any("expected" in r.message for r in caplog.records)
 
@@ -239,7 +239,7 @@ def test_check_auth_state_missing_logs_warning(tmp_path, caplog) -> None:
     import logging
 
     missing = tmp_path / "no_auth.json"
-    with caplog.at_level(logging.WARNING, logger="src.knowledge.medium"):
+    with caplog.at_level(logging.WARNING, logger="knowledge.medium"):
         check_auth_state(missing)
     assert any("not found" in r.message for r in caplog.records)
 
@@ -249,6 +249,6 @@ def test_check_auth_state_fresh_file_no_warning(tmp_path, caplog) -> None:
 
     auth = tmp_path / "auth.json"
     auth.write_text("{}")
-    with caplog.at_level(logging.WARNING, logger="src.knowledge.medium"):
+    with caplog.at_level(logging.WARNING, logger="knowledge.medium"):
         check_auth_state(auth)
     assert not any("days old" in r.message for r in caplog.records)

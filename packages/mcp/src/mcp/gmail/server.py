@@ -3,13 +3,14 @@
 
 import json
 
-from mcp.server.fastmcp import FastMCP
-from src.core.gmail.ops import (
+from core.gmail.ops import (
     create_draft_message,
     get_message_content,
     list_messages,
     send_draft,
 )
+
+from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("gmail-mcp")
 

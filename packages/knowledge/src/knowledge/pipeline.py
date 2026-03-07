@@ -16,12 +16,13 @@ from pathlib import Path
 
 import yaml
 
-from src.core.gmail import ops as gmail_ops
-from src.knowledge import fetcher, medium, raw_store, vector_store
+from core.gmail import ops as gmail_ops
+
+from knowledge import fetcher, medium, raw_store, vector_store
 
 logger = logging.getLogger(__name__)
 
-_NEWSLETTERS_PATH = Path(__file__).parents[2] / "config" / "newsletters.yaml"
+_NEWSLETTERS_PATH = Path(__file__).parents[4] / "config" / "newsletters.yaml"
 MAX_EMAILS = 10  # safety cap per run
 
 
@@ -164,7 +165,7 @@ def set_article_vector_status(url: str, status: str) -> None:
 
     Example:
         uv run python -c "
-        from src.knowledge.pipeline import set_article_vector_status
+        from knowledge.pipeline import set_article_vector_status
         set_article_vector_status('https://medium.com/...', 'ready')
         "
     """

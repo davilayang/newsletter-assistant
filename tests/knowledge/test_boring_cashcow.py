@@ -2,8 +2,8 @@
 
 from datetime import date
 
-from src.knowledge.boring_cashcow import CashCowSection, parse_cashcow_html
-from src.knowledge.cashcow_store import get_sections, upsert_section
+from knowledge.boring_cashcow import CashCowSection, parse_cashcow_html
+from knowledge.cashcow_store import get_sections, upsert_section
 
 # ---------------------------------------------------------------------------
 # Minimal but realistic HTML fixture

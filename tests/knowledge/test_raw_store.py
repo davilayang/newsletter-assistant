@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.knowledge.raw_store import (
+from knowledge.raw_store import (
     get_all_articles,
     get_articles_by_vector_status,
     is_processed,

@@ -7,17 +7,16 @@ from pathlib import Path
 
 import yaml
 
+from core.gmail import ops as gmail_ops
+from core.notes import save_note as _save_note
+from knowledge import fetcher, medium, raw_store, vector_store
 from livekit.agents import RunContext, ToolError, function_tool
-
-from src.core.gmail import ops as gmail_ops
-from src.core.notes import save_note as _save_note
-from src.knowledge import fetcher, medium, raw_store, vector_store
 
 # Truncate fetched article content to this length before passing to the LLM,
 # to keep context usage predictable.
 _MAX_ARTICLE_CHARS = 12_000
 
-_NEWSLETTERS_PATH = Path(__file__).parents[2] / "config" / "newsletters.yaml"
+_NEWSLETTERS_PATH = Path(__file__).parents[4] / "config" / "newsletters.yaml"
 
 
 def _load_newsletters() -> dict[str, dict]:
