@@ -13,6 +13,8 @@ set -euo pipefail
 PI="${PI:-rpi-a}"
 PI_DIR="~/newsletter-assistant"
 SERVICES="frontend agent"
+CERT_FILE="creds/pi-cert.pem"
+KEY_FILE="creds/pi-key.pem"
 
 # --- Helpers ----------------------------------------------------------------
 
@@ -46,12 +48,30 @@ done
 [ -d creds ] || error "Missing creds/ directory"
 [ -d config ] || error "Missing config/ directory"
 
-# --- 1. Build images --------------------------------------------------------
+# --- 1. Generate SSL certs (if missing) -------------------------------------
+
+if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
+    command -v mkcert >/dev/null || error "mkcert not found — install with: brew install mkcert"
+    PI_IP=$(ssh "$PI" "hostname -I | awk '{print \$1}'")
+    [ -n "$PI_IP" ] || error "Could not resolve Pi IP address"
+    info "Generating SSL certs for $PI_IP..."
+    mkcert -cert-file "$CERT_FILE" -key-file "$KEY_FILE" "$PI_IP" localhost 127.0.0.1
+    info "Certs saved to $CERT_FILE and $KEY_FILE"
+    info "Remember to uncomment SSL_CERTFILE and SSL_KEYFILE in .env"
+    info "To trust on mobile devices, copy the root CA to the device:"
+    info "  CA location: $(mkcert -CAROOT)/rootCA.pem"
+    info "  iOS: Settings → Profile Downloaded → Install → Certificate Trust Settings → enable"
+    info "  Android: Settings → Security → Install from storage"
+else
+    info "SSL certs already exist, skipping generation"
+fi
+
+# --- 2. Build images -------------------------------------------------------
 
 info "Building images locally..."
 DOCKER_USER=local docker compose build $SERVICES
 
-# --- 2. Transfer images to Pi -----------------------------------------------
+# --- 3. Transfer images to Pi -----------------------------------------------
 
 info "Transferring images to Pi ($PI)..."
 if ! command -v pv >/dev/null; then
@@ -62,7 +82,7 @@ for svc in $SERVICES; do
     transfer_image "$image"
 done
 
-# --- 3. Sync config & credentials -------------------------------------------
+# --- 4. Sync config & credentials -------------------------------------------
 
 info "Syncing files to Pi..."
 ssh "$PI" "mkdir -p $PI_DIR"
@@ -76,7 +96,7 @@ rsync -avz -v \
 rsync -avz -v creds/  "$PI:$PI_DIR/creds/"
 rsync -avz -v config/ "$PI:$PI_DIR/config/"
 
-# --- 4. Deploy on Pi --------------------------------------------------------
+# --- 5. Deploy on Pi --------------------------------------------------------
 
 info "Starting containers on Pi..."
 ssh "$PI" "cd $PI_DIR && \

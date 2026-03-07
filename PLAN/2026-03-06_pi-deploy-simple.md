@@ -15,38 +15,20 @@ Docker memory limits require cgroup memory support enabled in the kernel. Withou
 ssh $PI "echo ' cgroup_enable=memory cgroup_memory=1' | sudo tee -a /boot/firmware/cmdline.txt && sudo reboot"
 ```
 
-### Enable HTTPS for mic access (one-time) (host on MacOS)
+### Enable HTTPS for mic access (one-time)
 
-Browsers block `getUserMedia()` (microphone) on non-localhost HTTP. Use `mkcert` to create a trusted local CA + cert.
+Browsers block `getUserMedia()` (microphone) on non-localhost HTTP. The deploy script (`scripts/deploy-pi.sh`) automatically generates certs with `mkcert` on first run if `creds/pi-cert.pem` doesn't exist. Requires `brew install mkcert` on the Mac.
 
-```bash
-# On Mac — install mkcert and create a local CA
-brew install mkcert
-# On Raspberry PI,
-sudo apt install mkcert
-
-# Generate cert for the Pi's IP (or hostname)
-mkcert -cert-file creds/pi-cert.pem -key-file creds/pi-key.pem 192.168.1.168
-mkcert 192.168.1.168
-
-mkcert -CAROOT
-# shows the root cert
-
-# Copy certs to Pi
-# rsync -avz pi-cert.pem pi-key.pem $PI:~/newsletter-assistant/creds/
-
-# Trust the CA on your other devices (phone, etc.):
-#   Copy ~/Library/Application\ Support/mkcert/rootCA.pem to the device
-#   iOS: Settings → Profile Downloaded → Install → Settings → General → About → Certificate Trust Settings → enable
-#   Android: Settings → Security → Install from storage
-```
-
-Add these to `.env` on the Pi (certs are already volume-mounted at `/app/creds`):
+After generation, uncomment these lines in `.env` (certs are volume-mounted at `/app/creds`):
 
 ```
 SSL_CERTFILE=/app/creds/pi-cert.pem
 SSL_KEYFILE=/app/creds/pi-key.pem
 ```
+
+To trust on mobile devices, copy the root CA (`mkcert -CAROOT` → `rootCA.pem`) to the device:
+- **iOS:** Settings → Profile Downloaded → Install → Certificate Trust Settings → enable
+- **Android:** Settings → Security → Install from storage
 
 Then access at `https://<PI_IP>:8080`.
 
