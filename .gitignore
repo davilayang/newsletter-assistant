@@ -1,4 +1,5 @@
 FINDINGS/
+PLAN/
 creds
 *.pem
 .zed
@@ -24,8 +25,7 @@ wheels/
 # Runtime data
 data/
 logs/
-NOTES/*
-!NOTES/.gitkeep
+NOTES/
 
 # Environment variables
 .env
