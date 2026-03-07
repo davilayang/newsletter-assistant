@@ -65,9 +65,13 @@ src/
 
   knowledge/          # Scraping + knowledge pipeline (Phase 2)
     fetcher.py        # Tiered article fetcher: Jina Reader → mediumapi.com → camoufox (browser)
-    medium.py         # Newsletter HTML parser + camoufox browser fetcher
+    medium.py         # Medium newsletter HTML parser + camoufox browser fetcher
+    the_batch.py      # "The Batch" (DeepLearning.AI) newsletter email parser
+    boring_cashcow.py # "Boring Cash Cow" newsletter email parser
     pipeline.py       # run() — cron / Airflow PythonOperator entrypoint
-    raw_store.py      # SQLite: articles table + scrape_log for dedup
+    raw_store.py      # SQLite: articles table + scrape_log for dedup (Medium)
+    batch_store.py    # SQLite store for The Batch newsletter
+    cashcow_store.py  # SQLite store for Boring Cash Cow newsletter
     vector_store.py   # ChromaDB: chunk → embed → upsert, semantic search
     graph.py          # Neo4j (Phase 2+)
 
@@ -105,6 +109,8 @@ Jina Reader (free/paid) → mediumapi.com (RapidAPI) → camoufox (headless brow
 Gmail → medium.py → raw_store (SQLite) → vector_store (ChromaDB) → graph (Neo4j)
 ```
 ChromaDB is fully rebuildable from `articles.db`. Only `articles.db` needs to be backed up.
+
+**Newsletter parsers:** Each newsletter source has its own parser + SQLite store pair (e.g. `the_batch.py` + `batch_store.py`, `boring_cashcow.py` + `cashcow_store.py`). Parsers take raw email HTML/MIME, extract sections into dataclasses, and the corresponding store persists them. When adding a new newsletter, follow this pattern: create a parser module and a dedicated store module.
 
 ## MCP Server Configuration
 
