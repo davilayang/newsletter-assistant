@@ -1,24 +1,33 @@
 # Email Newsletter Assistant
 
-A personal knowledge assistant built on Gmail and LiveKit. Talk to your Medium newsletter by voice — ask questions, get summaries, take notes. A daily scraping pipeline accumulates article content into a searchable knowledge base.
+A personal knowledge assistant built on Gmail and LiveKit. Talk to your newsletters by voice — ask questions, get summaries, take notes. A daily scraping pipeline accumulates article content into SQLite and ChromaDB for semantic search.
 
-## Prerequisites
+## Project Structure
+
+```
+src/
+  core/          # Shared: Gmail client, config (pydantic-settings), notes writer
+  agent/         # LiveKit voice agent + LLM function tools
+  knowledge/     # Scraping pipeline, newsletter parsers, SQLite + ChromaDB stores
+  mcp/gmail/     # MCP server for Claude Code / Desktop
+  frontend/      # NiceGUI web UI (voice session, article sidebar, transcript)
+config/          # Newsletter registry (newsletters.yaml), TTS rules
+scripts/         # One-time setup scripts (e.g. medium_login.py)
+dags/            # Airflow DAGs — thin wrappers over knowledge/pipeline.py
+data/            # Runtime data — gitignored (articles.db, chroma/)
+creds/           # OAuth credentials — gitignored
+NOTES/           # Saved session notes
+```
+
+## Usage
+
+### Prerequisites
 
 1. **Python 3.13** and [`uv`](https://docs.astral.sh/uv/)
 2. **GCP OAuth 2.0 credentials** for Gmail API
    - Google Cloud Console → Gmail API → Credentials → OAuth 2.0 Client IDs → Download JSON
    - Save as `creds/credentials.json`
-3. **API keys** — create a `.env` file at the project root:
-
-```env
-OPENAI_API_KEY=...
-
-LIVEKIT_URL=...
-LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
-```
-
-## Setup
+3. **API keys** — create a `.env` file from `.env.example` at the project root
 
 ```bash
 uv sync
@@ -26,9 +35,9 @@ uv sync
 
 On first run the Gmail OAuth consent flow will open in your browser and save a token to `creds/token.json`.
 
-### Medium authentication (required for full article content)
+#### Medium authentication (required for full article content)
 
-The scraping pipeline and the agent's `read_article` tool fetch full article content through your Medium account. Run this once to save your session credentials:
+Run once to save your Medium session credentials:
 
 ```bash
 uv run python scripts/medium_login.py
@@ -36,30 +45,24 @@ uv run python scripts/medium_login.py
 
 A browser window will open — log in to Medium, then press Enter in the terminal. Auth state is saved to `creds/medium_auth.json`. Re-run when fetching stops working (sessions typically last weeks to months).
 
-## Usage
-
 ### Voice Agent
 
 **Console mode** — text I/O in the terminal, no LiveKit room needed:
 
 ```bash
 uv run poe agent
-# or equivalently:
-uv run --env-file .env python -m src.agent.agent console
 ```
 
 **Dev mode** — connects to a LiveKit room with hot reload:
 
 ```bash
 uv run poe agent dev
-# or equivalently:
-uv run --env-file .env python -m src.agent.agent dev --reload
 
 # If using iTerm2, suppress the conflicting TERM_PROGRAM variable:
-TERM_PROGRAM=0 uv run --env-file .env python -m src.agent.agent dev --reload
+TERM_PROGRAM=0 uv run poe agent dev
 ```
 
-Then open https://agents-playground.livekit.io/ and connect with your LiveKit credentials to speak with the agent.
+Then open https://agents-playground.livekit.io/ and connect with your LiveKit credentials.
 
 The agent has four tools:
 
@@ -69,13 +72,6 @@ The agent has four tools:
 | `read_article` | "Read me that article", "Summarise it in detail" |
 | `save_note` | "Take a note", "Remember this" |
 | `search_knowledge` | "What have I read about RAG?", "Find that article on transformers" |
-
-Example session:
-
-> "Load my newsletter."
-> "Read the second article."
-> "Take a note: relevant to my RAG project."
-> "What have I read about vector databases?"
 
 Notes are saved to `NOTES/<today's date>_medium-notes.md`.
 
@@ -92,15 +88,11 @@ Opens at `http://127.0.0.1:8080`. The UI provides a voice session widget, articl
 Mobile browsers require HTTPS for microphone access. Use [`mkcert`](https://github.com/FiloSottile/mkcert) to create locally-trusted certificates:
 
 ```bash
-# Install mkcert (one-time)
-brew install mkcert
-mkcert -install
-
-# Generate certs for your local IP (find it with: ipconfig getifaddr en0)
-mkcert 192.168.1.38 localhost 127.0.0.1
+brew install mkcert && mkcert -install
+mkcert 192.168.1.38 localhost 127.0.0.1   # use your local IP
 ```
 
-Then run the frontend with SSL:
+Then run with SSL:
 
 ```bash
 APP_HOST=0.0.0.0 \
@@ -109,42 +101,25 @@ SSL_KEYFILE=./192.168.1.38+2-key.pem \
 uv run poe frontend
 ```
 
-On your phone, install the mkcert root CA so the certificate is trusted:
+On your phone, install the mkcert root CA (`mkcert -CAROOT` → transfer `rootCA.pem` → Settings → General → VPN & Device Management → Install), then open `https://<your-mac-ip>:8080`.
 
-1. Run `mkcert -CAROOT` to find the CA directory
-2. Transfer `rootCA.pem` to your phone (AirDrop, email, etc.)
-3. Install it: **Settings → General → VPN & Device Management → Install**
-4. Open `https://<your-mac-ip>:8080` in your mobile browser
-
-The frontend includes Wake Lock support to keep the screen on during voice sessions, preventing WebSocket disconnection on mobile.
-
-### Scraping pipeline
-
-The pipeline reads unread Medium newsletter emails from Gmail, fetches full article content via a headless Firefox browser (camoufox), and stores everything in SQLite + ChromaDB for later search.
+### Scraping Pipeline
 
 ```bash
 uv run poe pipeline
-# or equivalently:
-uv run --env-file .env python -m src.knowledge.pipeline
 ```
 
-Run this daily (cron / Airflow) to keep the knowledge base up to date. The pipeline is idempotent — safe to run multiple times.
+Reads unread newsletter emails from Gmail, fetches full article content, and stores everything in SQLite + ChromaDB. Idempotent — safe to run multiple times. Run daily via cron or Airflow.
 
-**Data files** (gitignored, back up `articles.db`):
+**Data files** (gitignored — back up `articles.db`):
+- `data/articles.db` — SQLite source of truth
+- `data/chroma/` — ChromaDB vector index (rebuildable from articles.db)
 
-```
-data/
-  articles.db   # SQLite — source of truth for all scraped articles
-  chroma/       # ChromaDB vector index (rebuildable from articles.db)
-```
-
-### Gmail MCP server
+### Gmail MCP Server
 
 Exposes three tools to Claude: `get_unread_emails`, `create_draft_reply`, `send_draft_message`.
 
-#### With Claude Code CLI
-
-Register with Claude Code CLI by adding to `.mcp.json`:
+Register in `.mcp.json`:
 
 ```json
 {
@@ -157,35 +132,21 @@ Register with Claude Code CLI by adding to `.mcp.json`:
 }
 ```
 
-Check with `claude mcp list`.
+Verify with `claude mcp list`.
 
 ## Development
 
 ```bash
-uv run poe check       # fmt + lint + typecheck + tests
-uv run poe fix         # auto-fix formatting and linting
-uv run pytest tests/path/to/test_file.py -v  # single test file
+uv run poe check       # Run all checks: fmt, lint, mypy, tests
+uv run poe test        # Run tests (pytest -v)
+uv run poe fix         # Auto-fix formatting (black) + linting (ruff)
+uv run poe mypy        # Type-check with mypy
+uv run pytest tests/path/to/test_file.py -v   # Single test file
 ```
 
-## Project structure
+## Others
 
-```
-src/
-  core/          # Shared: Gmail client, config, notes writer
-  mcp/gmail/     # MCP server for Claude Code / Desktop
-  agent/         # LiveKit voice agent + function tools (Phase 1)
-  knowledge/     # Scraping pipeline, SQLite store, ChromaDB (Phase 2)
-scripts/
-  medium_login.py   # One-time Medium auth setup
-dags/             # Airflow DAGs (Phase 2)
-data/             # Runtime data — gitignored
-  articles.db     # SQLite raw store
-  chroma/         # ChromaDB vector index
-creds/            # OAuth credentials — gitignored
-NOTES/            # Your saved session notes
-```
-
-## References
+### References
 
 - https://github.com/livekit-examples/python-agents-examples
 - https://github.com/livekit-examples/agent-starter-python
