@@ -2,8 +2,8 @@
 
 from datetime import date
 
-from src.knowledge.batch_store import get_articles, upsert_article
-from src.knowledge.the_batch import BatchArticle, parse_the_batch_html
+from src.knowledge.batch_store import get_sections, upsert_section
+from src.knowledge.the_batch import BatchSection, parse_the_batch_html
 
 # ---------------------------------------------------------------------------
 # Minimal but realistic HTML fragments
@@ -76,38 +76,36 @@ _SAMPLE_HTML = """
 """
 
 
-def test_parse_extracts_article_titles() -> None:
-    articles = parse_the_batch_html(_SAMPLE_HTML)
-    titles = [a.title for a in articles]
+def test_parse_extracts_section_titles() -> None:
+    sections = parse_the_batch_html(_SAMPLE_HTML)
+    titles = [s.title for s in sections]
     assert "Big AI Breakthrough" in titles
     assert "Robot Learns to Cook" in titles
 
 
 def test_parse_extracts_andrew_letter() -> None:
-    articles = parse_the_batch_html(_SAMPLE_HTML)
-    assert articles[0].title == "Letter from Andrew Ng"
-    assert "Dear friends" in articles[0].content_md
+    sections = parse_the_batch_html(_SAMPLE_HTML)
+    assert sections[0].title == "Letter from Andrew Ng"
+    assert "Dear friends" in sections[0].content_md
 
 
 def test_parse_filters_trivial_sections() -> None:
-    articles = parse_the_batch_html(_SAMPLE_HTML)
-    titles = [a.title for a in articles]
+    sections = parse_the_batch_html(_SAMPLE_HTML)
+    titles = [s.title for s in sections]
     assert "News" not in titles
     assert "Work With Andrew Ng" not in titles
     assert "Learn More About AI With Data Points!" not in titles
 
 
 def test_parse_preserves_hyperlinks() -> None:
-    articles = parse_the_batch_html(_SAMPLE_HTML)
-    # Find the "Big AI Breakthrough" article
-    article = next(a for a in articles if a.title == "Big AI Breakthrough")
-    # markdownify should produce [text](url) links
-    assert "[Example Lab](https://example.com/lab)" in article.content_md
+    sections = parse_the_batch_html(_SAMPLE_HTML)
+    section = next(s for s in sections if s.title == "Big AI Breakthrough")
+    assert "[Example Lab](https://example.com/lab)" in section.content_md
 
 
 def test_parse_letter_preserves_hyperlinks() -> None:
-    articles = parse_the_batch_html(_SAMPLE_HTML)
-    letter = articles[0]
+    sections = parse_the_batch_html(_SAMPLE_HTML)
+    letter = sections[0]
     assert "[link](https://example.com)" in letter.content_md
 
 
@@ -116,15 +114,15 @@ def test_parse_empty_html() -> None:
     assert parse_the_batch_html("<html><body></body></html>") == []
 
 
-def test_parse_no_articles() -> None:
+def test_parse_no_sections() -> None:
     html = "<html><body><p>Hello world</p></body></html>"
     assert parse_the_batch_html(html) == []
 
 
-def test_article_count() -> None:
-    """Letter + 2 real articles = 3 total."""
-    articles = parse_the_batch_html(_SAMPLE_HTML)
-    assert len(articles) == 3
+def test_section_count() -> None:
+    """Letter + 2 real sections = 3 total."""
+    sections = parse_the_batch_html(_SAMPLE_HTML)
+    assert len(sections) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -134,40 +132,39 @@ def test_article_count() -> None:
 
 def test_upsert_and_query(tmp_path) -> None:
     db = tmp_path / "test.db"
-    article = BatchArticle(
-        title="Test Article",
+    section = BatchSection(
+        title="Test Section",
         content_md="# Test\n\nSome content.",
         newsletter_date=date(2026, 3, 6),
     )
-    upsert_article(article, db_path=db)
-    rows = get_articles(db_path=db)
+    upsert_section(section, db_path=db)
+    rows = get_sections(db_path=db)
     assert len(rows) == 1
-    assert rows[0].title == "Test Article"
+    assert rows[0].title == "Test Section"
     assert rows[0].newsletter_date == date(2026, 3, 6)
 
 
 def test_upsert_idempotent(tmp_path) -> None:
     db = tmp_path / "test.db"
-    article = BatchArticle(
+    section = BatchSection(
         title="Test",
         content_md="v1",
         newsletter_date=date(2026, 3, 6),
     )
-    upsert_article(article, db_path=db)
-    # Update content
-    article.content_md = "v2"
-    upsert_article(article, db_path=db)
-    rows = get_articles(db_path=db)
+    upsert_section(section, db_path=db)
+    section.content_md = "v2"
+    upsert_section(section, db_path=db)
+    rows = get_sections(db_path=db)
     assert len(rows) == 1
     assert rows[0].content_md == "v2"
 
 
-def test_get_articles_since(tmp_path) -> None:
+def test_get_sections_since(tmp_path) -> None:
     db = tmp_path / "test.db"
-    old = BatchArticle("Old", "old", newsletter_date=date(2026, 1, 1))
-    new = BatchArticle("New", "new", newsletter_date=date(2026, 3, 6))
-    upsert_article(old, db_path=db)
-    upsert_article(new, db_path=db)
-    rows = get_articles(since=date(2026, 3, 1), db_path=db)
+    old = BatchSection("Old", "old", newsletter_date=date(2026, 1, 1))
+    new = BatchSection("New", "new", newsletter_date=date(2026, 3, 6))
+    upsert_section(old, db_path=db)
+    upsert_section(new, db_path=db)
+    rows = get_sections(since=date(2026, 3, 1), db_path=db)
     assert len(rows) == 1
     assert rows[0].title == "New"

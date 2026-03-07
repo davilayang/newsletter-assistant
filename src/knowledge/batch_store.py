@@ -1,5 +1,5 @@
 # src/knowledge/batch_store.py
-# SQLite store for The Batch newsletter articles.
+# SQLite store for The Batch newsletter sections.
 
 from __future__ import annotations
 
@@ -8,12 +8,12 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from src.knowledge.the_batch import BatchArticle
+from src.knowledge.the_batch import BatchSection
 
 DB_PATH = Path("data/the_batch.db")
 
 _CREATE_TABLE = """
-CREATE TABLE IF NOT EXISTS articles (
+CREATE TABLE IF NOT EXISTS sections (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,
     newsletter_date  DATE,
     title            TEXT,
@@ -34,48 +34,48 @@ def _connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
     return conn
 
 
-def upsert_article(
-    article: BatchArticle,
+def upsert_section(
+    section: BatchSection,
     db_path: Path = DB_PATH,
 ) -> None:
-    """Insert or replace an article. Idempotent on (newsletter_date, title)."""
+    """Insert or replace a section. Idempotent on (newsletter_date, title)."""
     with _connect(db_path) as conn:
         conn.execute(
             """
-            INSERT INTO articles (newsletter_date, title, content_md)
+            INSERT INTO sections (newsletter_date, title, content_md)
             VALUES (?, ?, ?)
             ON CONFLICT(newsletter_date, title) DO UPDATE SET
                 content_md = excluded.content_md,
                 stored_at  = CURRENT_TIMESTAMP
             """,
             (
-                article.newsletter_date.isoformat()
-                if article.newsletter_date
+                section.newsletter_date.isoformat()
+                if section.newsletter_date
                 else None,
-                article.title,
-                article.content_md,
+                section.title,
+                section.content_md,
             ),
         )
 
 
-def get_articles(
+def get_sections(
     since: date | None = None,
     db_path: Path = DB_PATH,
-) -> list[BatchArticle]:
-    """Return articles, optionally filtered to those on or after *since*."""
+) -> list[BatchSection]:
+    """Return sections, optionally filtered to those on or after *since*."""
     with _connect(db_path) as conn:
         if since is None:
             rows = conn.execute(
-                "SELECT * FROM articles ORDER BY newsletter_date, id"
+                "SELECT * FROM sections ORDER BY newsletter_date, id"
             ).fetchall()
         else:
             rows = conn.execute(
-                "SELECT * FROM articles WHERE newsletter_date >= ? ORDER BY newsletter_date, id",
+                "SELECT * FROM sections WHERE newsletter_date >= ? ORDER BY newsletter_date, id",
                 (since.isoformat(),),
             ).fetchall()
 
     return [
-        BatchArticle(
+        BatchSection(
             title=r["title"],
             content_md=r["content_md"],
             newsletter_date=date.fromisoformat(r["newsletter_date"])

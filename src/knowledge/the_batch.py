@@ -40,7 +40,7 @@ def _is_trivial(text: str) -> bool:
 
 
 @dataclass
-class BatchArticle:
+class BatchSection:
     title: str
     content_md: str  # markdown with hyperlinks preserved
     newsletter_date: date | None = field(default=None)
@@ -65,7 +65,7 @@ def _is_letter_stop(div: Tag) -> bool:
     return False
 
 
-def _extract_andrew_letter(soup: BeautifulSoup) -> BatchArticle | None:
+def _extract_andrew_letter(soup: BeautifulSoup) -> BatchSection | None:
     """Extract Andrew Ng's letter (the content before the first <h1>)."""
     # The letter uses Georgia serif font and starts with "Dear friends"
     dear_tag = soup.find(string=re.compile(r"Dear friends", re.IGNORECASE))
@@ -110,26 +110,26 @@ def _extract_andrew_letter(soup: BeautifulSoup) -> BatchArticle | None:
     if not md:
         return None
 
-    return BatchArticle(title="Letter from Andrew Ng", content_md=md)
+    return BatchSection(title="Letter from Andrew Ng", content_md=md)
 
 
-def parse_the_batch_html(html: str) -> list[BatchArticle]:
-    """Parse The Batch newsletter HTML and return a list of articles.
+def parse_the_batch_html(html: str) -> list[BatchSection]:
+    """Parse The Batch newsletter HTML and return a list of sections.
 
-    Each news article starts with an <h1> tag inside a rich_text wrapper div.
-    Andrew's letter (if present) is extracted as the first article.
+    Each news section starts with an <h1> tag inside a rich_text wrapper div.
+    Andrew's letter (if present) is extracted as the first section.
     Trivial sections (promos, job postings, footer) are filtered out.
     """
     if not html or not html.strip():
         return []
 
     soup = BeautifulSoup(html, "html.parser")
-    articles: list[BatchArticle] = []
+    sections: list[BatchSection] = []
 
     # 1. Extract Andrew's letter
     letter = _extract_andrew_letter(soup)
     if letter is not None:
-        articles.append(letter)
+        sections.append(letter)
 
     # 2. Extract news articles (each starts with an <h1> in a rich_text div)
     h1_tags = soup.find_all("h1")
@@ -147,15 +147,15 @@ def parse_the_batch_html(html: str) -> list[BatchArticle]:
         if not md:
             continue
 
-        articles.append(BatchArticle(title=title, content_md=md))
+        sections.append(BatchSection(title=title, content_md=md))
 
-    return articles
+    return sections
 
 
-def parse_the_batch_eml(raw_eml: str) -> tuple[str, date | None, list[BatchArticle]]:
+def parse_the_batch_eml(raw_eml: str) -> tuple[str, date | None, list[BatchSection]]:
     """Parse a raw .eml file for The Batch newsletter.
 
-    Returns (subject, date, articles).
+    Returns (subject, date, sections).
     """
     msg = email.message_from_string(raw_eml)
     subject = msg.get("Subject", "")
@@ -187,10 +187,9 @@ def parse_the_batch_eml(raw_eml: str) -> tuple[str, date | None, list[BatchArtic
                 charset = msg.get_content_charset() or "utf-8"
                 html_body = payload.decode(charset, errors="replace")
 
-    articles = parse_the_batch_html(html_body)
+    sections = parse_the_batch_html(html_body)
 
-    # Stamp newsletter_date on each article
-    for article in articles:
-        article.newsletter_date = newsletter_date
+    for section in sections:
+        section.newsletter_date = newsletter_date
 
-    return subject, newsletter_date, articles
+    return subject, newsletter_date, sections
